@@ -1,3 +1,4 @@
+import datetime
 import json
 from unittest.mock import Mock, patch
 
@@ -7,11 +8,13 @@ import requests
 from data import model
 from data.database import FederatedLogin
 from data.model import api_token
-from endpoints.api import api
+from endpoints.api import FRESH_LOGIN_TIMEOUT, api
 from endpoints.api.robot import (
     OrgRobot,
     OrgRobotFederation,
     OrgRobotList,
+    RegenerateOrgRobot,
+    RegenerateUserRobot,
     UserRobot,
     UserRobotFederation,
     UserRobotList,
@@ -634,3 +637,65 @@ def test_parse_federation_config_rejects_invalid_audiences(app, audiences):
 
     with app.app_context(), pytest.raises(Exception, match="Audiences must be a non-empty list"):
         _parse_federation_config(request)
+
+
+@pytest.mark.parametrize(
+    "endpoint, method, params, body",
+    [
+        (UserRobot, "PUT", {"robot_shortname": "newbot"}, None),
+        (UserRobot, "DELETE", {"robot_shortname": "dtrobot"}, None),
+        (OrgRobot, "PUT", {"orgname": "buynlarge", "robot_shortname": "newbot"}, None),
+        (OrgRobot, "DELETE", {"orgname": "buynlarge", "robot_shortname": "coolrobot"}, None),
+        (RegenerateUserRobot, "POST", {"robot_shortname": "dtrobot"}, None),
+        (
+            RegenerateOrgRobot,
+            "POST",
+            {"orgname": "buynlarge", "robot_shortname": "coolrobot"},
+            None,
+        ),
+        (
+            UserRobotFederation,
+            "POST",
+            {"robot_shortname": "dtrobot"},
+            [{"issuer": "https://test.example.com", "subject": "test"}],
+        ),
+        (
+            UserRobotFederation,
+            "DELETE",
+            {"robot_shortname": "dtrobot"},
+            None,
+        ),
+        (
+            OrgRobotFederation,
+            "POST",
+            {"orgname": "buynlarge", "robot_shortname": "coolrobot"},
+            [{"issuer": "https://test.example.com", "subject": "test"}],
+        ),
+        (
+            OrgRobotFederation,
+            "POST",
+            {"orgname": "buynlarge", "robot_shortname": "coolrobot"},
+            None,
+        ),
+        (
+            OrgRobotFederation,
+            "DELETE",
+            {"orgname": "buynlarge", "robot_shortname": "coolrobot"},
+            None,
+        ),
+    ],
+)
+def test_robot_mutation_requires_fresh_login(endpoint, method, params, body, app):
+    """Verify protected robot mutation endpoints require a fresh login session."""
+    with client_with_identity("devtable", app) as cl:
+        with cl.session_transaction() as sess:
+            sess["login_time"] = (
+                datetime.datetime.now() - FRESH_LOGIN_TIMEOUT - datetime.timedelta(minutes=10)
+            )
+
+        result = conduct_api_call(cl, endpoint, method, params, body, expected_code=401)
+        data = result.json
+        assert (
+            data.get("title") == "fresh_login_required"
+            or data.get("error_type") == "fresh_login_required"
+        )

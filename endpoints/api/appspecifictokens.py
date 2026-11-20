@@ -27,6 +27,7 @@ from endpoints.api import (
     show_if,
     validate_json_request,
 )
+from endpoints.exception import Unauthorized
 from util.parsing import truthy_bool
 from util.timedeltastring import convert_to_timedelta
 
@@ -114,6 +115,10 @@ class AppTokens(ApiResource):
         """
         Create a new app specific token for user.
         """
+        # A robot API token with user:admin passes the decorators; app tokens belong to humans.
+        if get_authenticated_user().robot:
+            raise Unauthorized()
+
         title = request.get_json()["title"]
         token = model.appspecifictoken.create_token(get_authenticated_user(), title)
 
@@ -145,6 +150,9 @@ class AppToken(ApiResource):
 
         Users can only access their own tokens.
         """
+        if get_authenticated_user().robot:
+            raise Unauthorized()
+
         user = get_authenticated_user()
         token = model.appspecifictoken.get_token_by_uuid(token_uuid, owner=user)
 
@@ -162,6 +170,9 @@ class AppToken(ApiResource):
         """
         Revokes a specific app token for the user.
         """
+        if get_authenticated_user().robot:
+            raise Unauthorized()
+
         token = model.appspecifictoken.revoke_token_by_uuid(
             token_uuid, owner=get_authenticated_user()
         )

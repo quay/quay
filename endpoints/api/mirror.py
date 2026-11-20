@@ -18,6 +18,7 @@ from endpoints.api import (
     format_date,
     nickname,
     path_param,
+    require_fresh_login,
     require_repo_admin,
     resource,
     show_if,
@@ -346,6 +347,7 @@ class RepoMirrorResource(RepositoryParamResource):
         }
 
     @require_repo_admin(allow_for_superuser=True)
+    @require_fresh_login
     @nickname("createRepoMirrorConfig")
     @validate_json_request("CreateMirrorConfig")
     def post(self, namespace_name, repository_name):
@@ -436,6 +438,7 @@ class RepoMirrorResource(RepositoryParamResource):
             return {"detail": "RepoMirrorConfig already exists for this repository."}, 409
 
     @require_repo_admin(allow_for_superuser=True)
+    @require_fresh_login
     @validate_json_request("UpdateMirrorConfig")
     @nickname("changeRepoMirrorConfig")
     def put(self, namespace_name, repository_name):

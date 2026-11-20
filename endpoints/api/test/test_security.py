@@ -7071,7 +7071,7 @@ SECURITY_TESTS: List[
         {"orgname": "testfederatedorg", "robot_shortname": "testfederatedorg+testfederatedrobot"},
         {"subject": "testsubject", "issuer": "testissuer"},
         "testuser",
-        400,
+        401,
     ),
     (
         OrgRobotFederation,
@@ -7156,8 +7156,8 @@ SECURITY_TESTS: List[
     (OrgMirrorConfig, "GET", ORG_PARAMS, None, "freshuser", 403),
     (OrgMirrorConfig, "GET", ORG_PARAMS, None, "reader", 403),
     (OrgMirrorConfig, "GET", ORG_PARAMS, None, "devtable", 404),
-    # OrgMirrorConfig POST (JSON validation happens before auth check)
-    (OrgMirrorConfig, "POST", ORG_PARAMS, {}, None, 400),
+    # OrgMirrorConfig POST (JSON validation happens before the permission check)
+    (OrgMirrorConfig, "POST", ORG_PARAMS, {}, None, 401),
     (OrgMirrorConfig, "POST", ORG_PARAMS, {}, "freshuser", 400),
     (OrgMirrorConfig, "POST", ORG_PARAMS, {}, "reader", 400),
     (OrgMirrorConfig, "POST", ORG_PARAMS, {}, "devtable", 400),

@@ -17,6 +17,7 @@ from app import app, authentication, usermanager
 from auth import scopes
 from auth.auth_context import (
     determine_auth_type_and_performer_kind,
+    get_api_scopes,
     get_authenticated_context,
     get_authenticated_user,
     get_sso_token,
@@ -655,10 +656,13 @@ def require_fresh_login(func):
     @wraps(func)
     def wrapped(*args, **kwargs):
         user = get_authenticated_user()
-        if not user or user.robot:
+        # Scoped robot API tokens are machine credentials with no session to refresh; plain robot
+        # credentials carry no API scopes and stay refused.
+        api_scopes = get_api_scopes()
+        if not user or (user.robot and not api_scopes):
             raise Unauthorized()
 
-        if get_validated_oauth_token() or get_sso_token():
+        if get_validated_oauth_token() or get_sso_token() or api_scopes:
             return func(*args, **kwargs)
 
         last_login = session.get("login_time", datetime.datetime.min)
