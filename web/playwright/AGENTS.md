@@ -17,6 +17,7 @@ web/playwright/
 ├── e2e/                          # Test specifications
 │   ├── api/                      # API-level tests
 │   ├── auth/                     # Authentication tests
+│   ├── health/                   # Health gate: setup project records suite start, its teardown fails on /v2 5xx in Jaeger
 │   ├── legacy-ui/                # Angular UI tests
 │   ├── organization/             # Organization tests
 │   ├── repository/               # Repository tests
@@ -33,6 +34,7 @@ web/playwright/
 │   │   └── raw-client.ts         # ApiClient (raw, no auto-cleanup)
 │   ├── config.ts                 # API_URL, BASE_URL
 │   ├── container.ts              # pushImage, isContainerRuntimeAvailable (skopeo/crane/oras/regctl)
+│   ├── health-gate.ts            # Jaeger /v2 5xx classifier for the health gate
 │   ├── mailpit.ts                # Email testing utilities
 │   ├── s3.ts                     # S3 storage utilities
 │   ├── security.ts               # Security scanning utilities
