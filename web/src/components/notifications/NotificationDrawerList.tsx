@@ -8,13 +8,22 @@ import {
 } from '@patternfly/react-core';
 import {TimesIcon} from '@patternfly/react-icons';
 import {useState} from 'react';
+import {useNavigate} from 'react-router-dom';
 
 import {useAppNotifications} from 'src/hooks/useAppNotifications';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
-import {getNotificationMessage} from './notificationTemplates';
+import {
+  getNotificationLink,
+  getNotificationMessage,
+} from './notificationTemplates';
 import {formatDate} from 'src/libs/utils';
 
-export function NotificationDrawerListComponent() {
+export function NotificationDrawerListComponent({
+  onNavigate,
+}: {
+  onNavigate?: () => void;
+}) {
+  const navigate = useNavigate();
   const {user} = useCurrentUser();
   const {notifications, dismissNotification, loading} = useAppNotifications(
     !!user?.username,
@@ -80,7 +89,14 @@ export function NotificationDrawerListComponent() {
             <NotificationDrawerListItemHeader
               title={getNotificationMessage(notification)}
               variant={mapLevelToVariant(notification.level)}
-              onClick={() => markAsRead(notification.id)}
+              onClick={() => {
+                markAsRead(notification.id);
+                const link = getNotificationLink(notification);
+                if (link) {
+                  navigate(link);
+                  onNavigate?.();
+                }
+              }}
               data-testid="notification-header"
             />
             <NotificationDrawerListItemBody>

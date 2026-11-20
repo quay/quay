@@ -250,7 +250,9 @@ export function StandaloneMain() {
     <NotificationDrawer>
       <NotificationDrawerHeader title="Notifications" onClose={toggleDrawer} />
       <NotificationDrawerBody>
-        <NotificationDrawerListComponent />
+        <NotificationDrawerListComponent
+          onNavigate={() => setIsDrawerOpen(false)}
+        />
       </NotificationDrawerBody>
     </NotificationDrawer>
   );
