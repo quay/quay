@@ -1185,6 +1185,61 @@ test.describe(
         await expect(paginationInfo).toContainText(`1 - 20 of ${ITEM_COUNT}`);
       });
 
+      test(
+        '"Selected" in "Add to team" lists teams selected across pages',
+        {tag: '@PROJQUAY-6609'},
+        async ({authenticatedPage, api}) => {
+          const org = await api.organization('selectedteam');
+
+          // Orgs start with an auto-created "owners" team
+          for (let i = 0; i < ITEM_COUNT - 1; i++) {
+            await api.team(org.name, `team${String(i).padStart(2, '0')}`);
+          }
+
+          await authenticatedPage.goto(
+            `/organization/${org.name}?tab=Robotaccounts`,
+          );
+          await authenticatedPage
+            .getByRole('button', {name: 'Create robot account'})
+            .click();
+          const modal = authenticatedPage.locator(
+            '#create-robot-account-modal',
+          );
+          await expect(modal).toBeVisible();
+          await authenticatedPage
+            .getByTestId('robot-wizard-form-name')
+            .fill('selectedbot');
+          await authenticatedPage
+            .locator('nav[aria-label="Wizard steps"]')
+            .getByText('Add to team (optional)')
+            .click();
+
+          const paginationInfo = modal
+            .locator('.pf-v6-c-pagination__total-items')
+            .first();
+          const rows = modal.locator('[data-testid^="checkbox-row-"]');
+          await expect(paginationInfo).toContainText(`1 - 20 of ${ITEM_COUNT}`);
+
+          const firstPageTeam = await rows.first().getAttribute('data-testid');
+          await rows.first().getByRole('checkbox').check();
+          await modal
+            .getByRole('button', {name: 'Go to next page'})
+            .first()
+            .click();
+          await expect(paginationInfo).toContainText(
+            `21 - ${ITEM_COUNT} of ${ITEM_COUNT}`,
+          );
+          const secondPageTeam = await rows.first().getAttribute('data-testid');
+          await rows.first().getByRole('checkbox').check();
+
+          await modal.getByRole('button', {name: 'Selected'}).click();
+
+          await expect(paginationInfo).toHaveText(/^1 - 2 of 2/);
+          await expect(modal.getByTestId(firstPageTeam)).toBeVisible();
+          await expect(modal.getByTestId(secondPageTeam)).toBeVisible();
+        },
+      );
+
       test('pagination in "Add to repository" wizard step with >20 repos', async ({
         authenticatedPage,
         api,
