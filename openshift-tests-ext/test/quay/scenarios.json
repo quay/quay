@@ -1,0 +1,32 @@
+[
+  {
+    "name": "[sig-quay] Push and pull image via Quay route",
+    "entrypoint": "/bin/bash",
+    "args": ["-c", "${INTEROP_SCRIPTS_DIR:-.}/check-quay-push-pull.sh"],
+    "tags": ["SMOKE", "quay"],
+    "envVars": {
+      "QUAY_NAMESPACE": "quay-enterprise"
+    },
+    "timeout": "15m"
+  },
+  {
+    "name": "[sig-quay] Verify ODF object storage integration",
+    "entrypoint": "/bin/bash",
+    "args": ["-c", "${INTEROP_SCRIPTS_DIR:-.}/check-quay-odf-storage.sh"],
+    "tags": ["SMOKE", "quay"],
+    "envVars": {
+      "QUAY_NAMESPACE": "quay-enterprise"
+    },
+    "timeout": "10m"
+  },
+  {
+    "name": "[sig-quay] ACS scan of pushed Quay image",
+    "entrypoint": "/bin/bash",
+    "args": ["-c", "${INTEROP_SCRIPTS_DIR:-.}/check-quay-acs-scan.sh"],
+    "tags": ["SMOKE", "quay"],
+    "envVars": {
+      "QUAY_NAMESPACE": "quay-enterprise"
+    },
+    "timeout": "20m"
+  }
+]
