@@ -14,12 +14,18 @@
  * Migrated from: web/cypress/e2e/repository-autopruning.cy.ts (17 tests consolidated to 6)
  */
 
+import path from 'path';
+import {APIRequestContext} from '@playwright/test';
 import {test, expect, getTestUsers} from '../../fixtures';
 import {ApiClient} from '../../utils/api';
+import {getV2Token} from '../../utils/api/auth';
+import {API_URL} from '../../utils/config';
 import {
   pushImage,
   pushMultiArchImage,
   pushUniqueImage,
+  orasAttach,
+  isOrasAvailable,
 } from '../../utils/container';
 
 /**
@@ -40,6 +46,42 @@ async function createCosignSigTag(
   const sigName = `${digest.replace(':', '-')}.sig`;
   await api.createTag(namespace, repo, sigName, digest);
   return sigName;
+}
+
+async function listReferrerDigests(
+  request: APIRequestContext,
+  token: string,
+  namespace: string,
+  repo: string,
+  digest: string,
+): Promise<string[]> {
+  const response = await request.get(
+    `${API_URL}/v2/${namespace}/${repo}/referrers/${digest}`,
+    {headers: {authorization: `Bearer ${token}`}},
+  );
+  if (!response.ok()) {
+    const body = await response.text();
+    throw new Error(
+      `Failed to list referrers for ${digest}: ${response.status()} - ${body}`,
+    );
+  }
+  const body = await response.json();
+  return (body.manifests ?? []).map((m: {digest: string}) => m.digest);
+}
+
+async function getManifestStatus(
+  request: APIRequestContext,
+  token: string,
+  namespace: string,
+  repo: string,
+  digest: string,
+): Promise<number> {
+  const response = await request.get(
+    `${API_URL}/v2/${namespace}/${repo}/manifests/${digest}`,
+    {headers: {authorization: `Bearer ${token}`}},
+  );
+  await response.dispose();
+  return response.status();
 }
 
 test.describe(
@@ -878,6 +920,137 @@ test.describe(
         const names = tags.tags.map((t) => t.name);
         expect(names).toContain('v1');
         expect(names).toContain(sigName);
+      },
+    );
+
+    test(
+      'autoprune of last subject tag allows Cosign V3 referrer GC',
+      {tag: ['@PROJQUAY-12396', '@container']},
+      async ({api, playwright}) => {
+        test.slow();
+        test.skip(
+          !(await isOrasAvailable()),
+          'oras CLI required for referrer attach',
+        );
+
+        const org = await api.organization('pruneref');
+        const repo = await api.repository(org.name, 'prunetest');
+
+        // Single subject tag so prune removes the last visible alias
+        await pushImage(
+          org.name,
+          repo.name,
+          'v1',
+          user.username,
+          user.password,
+        );
+
+        const v1Tags = await api.raw.getTags(org.name, repo.name, {
+          specificTag: 'v1',
+        });
+        expect(v1Tags.tags.length).toBeGreaterThan(0);
+        const digest = v1Tags.tags[0].manifest_digest;
+
+        const fixturesDir = path.resolve(__dirname, '../../fixtures/oras');
+        orasAttach(
+          org.name,
+          repo.name,
+          'v1',
+          user.username,
+          user.password,
+          'application/spdx+json',
+          'producer=syft 0.63.0',
+          path.join(fixturesDir, 'referrer.spdx.json'),
+        );
+
+        const request = await playwright.request.newContext({
+          ignoreHTTPSErrors: true,
+        });
+        try {
+          const scope = `repository:${org.name}/${repo.name}:pull,push`;
+          const v2Token = await getV2Token(
+            request,
+            API_URL,
+            user.username,
+            user.password,
+            scope,
+          );
+
+          // Wait for the ORAS referrer to appear and capture its digest
+          let referrerDigests: string[] = [];
+          await expect
+            .poll(
+              async () => {
+                referrerDigests = await listReferrerDigests(
+                  request,
+                  v2Token,
+                  org.name,
+                  repo.name,
+                  digest,
+                );
+                return referrerDigests.length;
+              },
+              {
+                message: 'Waiting for ORAS referrer to appear',
+                timeout: 30_000,
+                intervals: [500, 1_000, 2_000],
+              },
+            )
+            .toBe(1);
+          const referrerDigest = referrerDigests[0];
+
+          // Sanity: the referrer is resolvable while the subject is tagged
+          expect(
+            await getManifestStatus(
+              request,
+              v2Token,
+              org.name,
+              repo.name,
+              referrerDigest,
+            ),
+          ).toBe(200);
+
+          await api.repoAutoPrunePolicy(org.name, repo.name, {
+            method: 'creation_date',
+            value: '10s',
+          });
+
+          // Autoprune removes the last subject tag
+          await expect(async () => {
+            const tags = await api.raw.getTags(org.name, repo.name);
+            expect(tags.tags).toHaveLength(0);
+          }).toPass({timeout: 180_000, intervals: [10_000]});
+
+          // Deleting the subject's last tag must expire the referrer's
+          // hidden $temp-* tag. That is observable without GC (the test
+          // stack runs with FEATURE_GARBAGE_COLLECTION: false): a GET of the
+          // referrer manifest by digest resolves through the alive-tag
+          // lookup, so it turns 404 once the temp tag is expired. Without
+          // the fix the temp tag never expires and the GET keeps returning
+          // 200. (The referrers endpoint cannot assert this: it resolves the
+          // subject with allow_dead=False and already 400s as soon as the
+          // subject's tag is pruned, regardless of the fix.)
+          await expect
+            .poll(
+              async () =>
+                getManifestStatus(
+                  request,
+                  v2Token,
+                  org.name,
+                  repo.name,
+                  referrerDigest,
+                ),
+              {
+                message:
+                  'Waiting for referrer temp-tag expiry after subject autoprune',
+                timeout: 120_000,
+                intervals: [5_000, 10_000],
+              },
+            )
+            .toBe(404);
+        } finally {
+          await request.dispose();
+        }
       },
     );
   },

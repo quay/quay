@@ -439,6 +439,48 @@ def test_empty_gc(default_tag_policy, initialized_db):
         assert not gc_now(repo)
 
 
+def test_gc_sweeps_referrer_temp_tags_for_naturally_expired_subject(
+    default_tag_policy, initialized_db
+):
+    """
+    A subject tag that expires on its own (e.g. a user-configured tag
+    expiration) has no deletion event that would expire its referrers'
+    $temp-* tags. garbage_collect_repo must sweep them so the referrer (and,
+    once nothing references it, the subject) can be reclaimed instead of
+    leaking forever.
+    """
+    with assert_gc_integrity():
+        repo = model.repository.create_repository("devtable", "newrepo", None)
+        subject_manifest, _ = create_manifest_for_testing(
+            repo, differentiation_field="referrer-subject", include_shared_blob=True
+        )
+        subject_tag = model.oci.tag.retarget_tag("v1", subject_manifest)
+        assert subject_tag is not None
+
+        referrer_manifest, _ = create_manifest_for_testing(
+            repo, differentiation_field="referrer-signature", include_shared_blob=True
+        )
+        Manifest.update(subject=subject_manifest.digest).where(
+            Manifest.id == referrer_manifest.id
+        ).execute()
+        temp_tag = model.oci.tag.create_temporary_tag_if_necessary(
+            referrer_manifest, 300, skip_expiration=True
+        )
+        assert temp_tag is not None
+        assert temp_tag.lifetime_end_ms is None
+
+        # The subject's tag expires on its own rather than being deleted.
+        model.oci.tag.set_tag_end_ms(subject_tag, model.oci.tag.get_epoch_timestamp_ms() - 1000)
+
+        assert gc_now(repo)
+
+        # The sweep expired the referrer's hidden $temp-* tags (both the
+        # non-expiring one and the short-lived one from its by-digest
+        # creation), so the purge reclaimed the referrer manifest.
+        assert Tag.get_or_none(Tag.id == temp_tag.id) is None
+        assert Manifest.get_or_none(Manifest.id == referrer_manifest.id) is None
+
+
 def test_time_machine_no_gc(default_tag_policy, initialized_db):
     """
     Repository has two tags with shared manfiest.
