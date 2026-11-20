@@ -34,6 +34,7 @@ packages: [
   glibc,
   glibc-langpack-en,
   glibc-devel,
+  glibc-minimal-langpack,
 ]
 moduleEnable:
   - nginx:1.24
