@@ -13,6 +13,8 @@ import {useQuayConfig} from './UseQuayConfig';
 
 export interface NotificationEventConfig {
   days?: number;
+  level?: string;
+  'tag-regex'?: string | null;
 }
 
 export interface NotificationEvent {
