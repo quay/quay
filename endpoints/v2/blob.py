@@ -34,7 +34,13 @@ from endpoints.decorators import (
     parse_repository_name,
 )
 from endpoints.metrics import image_pulled_bytes
-from endpoints.v2 import get_input_stream, require_repo_read, require_repo_write, v2_bp
+from endpoints.v2 import (
+    disallow_for_proxy_cache_org,
+    get_input_stream,
+    require_repo_read,
+    require_repo_write,
+    v2_bp,
+)
 from endpoints.v2.errors import (
     BlobUnknown,
     BlobUploadInvalid,
@@ -276,6 +282,7 @@ def _try_to_mount_blob(repository_ref, mount_blob_digest):
 @anon_protect
 @check_readonly
 @check_pushes_disabled
+@disallow_for_proxy_cache_org
 def start_blob_upload(namespace_name, repo_name):
 
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
@@ -380,6 +387,7 @@ def fetch_existing_upload(namespace_name, repo_name, upload_uuid):
 @anon_protect
 @check_readonly
 @check_pushes_disabled
+@disallow_for_proxy_cache_org
 def upload_chunk(namespace_name, repo_name, upload_uuid):
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
@@ -425,6 +433,7 @@ def upload_chunk(namespace_name, repo_name, upload_uuid):
 @require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 @check_readonly
+@disallow_for_proxy_cache_org
 def monolithic_upload_or_last_chunk(namespace_name, repo_name, upload_uuid):
 
     # Ensure the digest is present before proceeding.

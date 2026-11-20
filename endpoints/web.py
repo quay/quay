@@ -954,6 +954,8 @@ def attach_bitbucket_trigger(namespace_name, repo_name):
             abort(404, message=msg)
         elif repo.kind.name != "image":
             abort(501)
+        elif features.PROXY_CACHE and model.proxy_cache.has_proxy_cache_config(namespace_name):
+            abort(400, "Cannot modify repository: organization is a proxy cache")
 
         trigger = model.build.create_build_trigger(
             repo, BitbucketBuildTrigger.service_name(), None, current_user.db_user()
@@ -988,6 +990,8 @@ def attach_custom_build_trigger(namespace_name, repo_name):
             abort(404, message=msg)
         elif repo.kind.name != "image":
             abort(501)
+        elif features.PROXY_CACHE and model.proxy_cache.has_proxy_cache_config(namespace_name):
+            abort(400, "Cannot modify repository: organization is a proxy cache")
 
         trigger = model.build.create_build_trigger(
             repo, CustomBuildTrigger.service_name(), None, current_user.db_user()

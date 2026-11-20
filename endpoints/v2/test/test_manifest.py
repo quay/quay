@@ -14,14 +14,18 @@ from data.cache.impl import InMemoryDataModelCache
 from data.cache.test.test_cache import TEST_CACHE_CONFIG
 from data.model.oci.tag import set_tag_immutable
 from data.registry_model import registry_model
-from endpoints.test.shared import conduct_call, toggle_feature
+from endpoints.test.shared import conduct_call, gen_basic_auth, toggle_feature
 from image.docker.schema2.test.test_config import (
     CONFIG_BYTES,
     CONFIG_DIGEST,
     CONFIG_SIZE,
 )
 from test.fixtures import *  # noqa: F401, F403
-from util.security.registry_jwt import build_context_and_subject, generate_bearer_token
+from util.security.registry_jwt import (
+    build_context_and_subject,
+    decode_bearer_token,
+    generate_bearer_token,
+)
 
 
 def test_e2e_query_count_manifest_norewrite(client, app):
@@ -678,3 +682,42 @@ def test_manifest_deletion_doesnt_return_stale_results(client, app):
         # load response
         response_data = json.loads(rv.data)
         assert "latest" not in response_data["tags"]
+
+
+def test_write_manifest_refused_after_org_becomes_proxy_cache(client, app):
+    # The push token predates the org's proxy cache config.
+    params = {
+        "service": realapp.config["SERVER_HOSTNAME"],
+        "scope": "repository:buynlarge/orgrepo:pull,push",
+    }
+    headers = {"Authorization": gen_basic_auth("devtable", "password")}
+    resp = conduct_call(
+        client, "v2.generate_registry_jwt", url_for, "GET", params, {}, 200, headers=headers
+    )
+    token = resp.json["token"]
+    decoded = decode_bearer_token(token, instance_keys, realapp.config)
+    assert sorted(decoded["access"][0]["actions"]) == ["pull", "push"]
+
+    model.proxy_cache.create_proxy_cache_config("buynlarge", "docker.io")
+
+    repo_ref = registry_model.lookup_repository("devtable", "simple")
+    manifest = registry_model.get_manifest_for_tag(registry_model.get_repo_tag(repo_ref, "latest"))
+    for resource, manifest_ref in [
+        ("v2.write_manifest_by_tagname", "newtag"),
+        ("v2.write_manifest_by_digest", manifest.digest),
+    ]:
+        resp = conduct_call(
+            client,
+            resource,
+            url_for,
+            "PUT",
+            {"repository": "buynlarge/orgrepo", "manifest_ref": manifest_ref},
+            expected_code=401,
+            headers={"Authorization": "Bearer %s" % token},
+            raw_body=manifest.internal_manifest_bytes.as_encoded_str(),
+        )
+        assert "WWW-Authenticate" in resp.headers
+
+    org_repo_ref = registry_model.lookup_repository("buynlarge", "orgrepo")
+    assert registry_model.get_repo_tag(org_repo_ref, "newtag") is None
+    assert registry_model.lookup_manifest_by_digest(org_repo_ref, manifest.digest) is None

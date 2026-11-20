@@ -29,6 +29,7 @@ from endpoints.api import (
 from endpoints.api import abort as custom_abort
 from endpoints.api import (
     disallow_for_non_normal_repositories,
+    disallow_for_proxy_cache_org,
     disallow_for_user_namespace,
     format_date,
     log_action,
@@ -36,6 +37,7 @@ from endpoints.api import (
     parse_args,
     path_param,
     query_param,
+    require_repo_admin_in_proxy_cache_org,
     require_repo_read,
     require_repo_write,
     resource,
@@ -249,6 +251,7 @@ class RepositoryTag(RepositoryParamResource):
 
     @require_repo_write(allow_for_superuser=True)
     @disallow_for_non_normal_repositories
+    @disallow_for_proxy_cache_org
     @disallow_for_user_namespace
     @nickname("changeTag")
     @validate_json_request("ChangeTag")
@@ -378,6 +381,7 @@ class RepositoryTag(RepositoryParamResource):
         return "Updated", 201
 
     @require_repo_write(allow_for_superuser=True)
+    @require_repo_admin_in_proxy_cache_org
     @disallow_for_non_normal_repositories
     @disallow_for_user_namespace
     @nickname("deleteFullTag")
@@ -432,6 +436,7 @@ class RestoreTag(RepositoryParamResource):
 
     @require_repo_write(allow_for_superuser=True)
     @disallow_for_non_normal_repositories
+    @disallow_for_proxy_cache_org
     @disallow_for_user_namespace
     @nickname("restoreTag")
     @validate_json_request("RestoreTag")
@@ -516,6 +521,7 @@ class TagTimeMachineDelete(RepositoryParamResource):
     }
 
     @require_repo_write(allow_for_superuser=True)
+    @require_repo_admin_in_proxy_cache_org
     @nickname("removeTagFromTimemachine")
     @validate_json_request("ExpireTag")
     def post(self, namespace, repository, tag):

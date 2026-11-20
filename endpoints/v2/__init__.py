@@ -17,7 +17,7 @@ from auth.permissions import (
     SuperUserPermission,
 )
 from auth.registry_jwt_auth import get_auth_headers, process_registry_jwt_auth
-from data.model import PushesDisabledException, QuotaExceededException
+from data.model import PushesDisabledException, QuotaExceededException, proxy_cache
 from data.readreplica import ReadOnlyModeException
 from data.registry_model import registry_model
 from endpoints.decorators import anon_allowed, route_show_if
@@ -288,6 +288,18 @@ require_repo_write = _require_repo_permission(ModifyRepositoryPermission, scopes
 require_repo_admin = _require_repo_permission(
     AdministerRepositoryPermission, scopes=["pull", "push"]
 )
+
+
+def disallow_for_proxy_cache_org(func):
+    # A bearer token issued before the org became a proxy cache still carries push.
+    @wraps(func)
+    def wrapped(namespace_name, repo_name, *args, **kwargs):
+        if features.PROXY_CACHE and proxy_cache.has_proxy_cache_config(namespace_name):
+            raise Unauthorized(repository=namespace_name + "/" + repo_name, scopes=["pull", "push"])
+
+        return func(namespace_name, repo_name, *args, **kwargs)
+
+    return wrapped
 
 
 def get_input_stream(flask_request):
