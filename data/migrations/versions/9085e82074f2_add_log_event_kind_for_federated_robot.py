@@ -27,9 +27,12 @@ def upgrade(op, tables, tester):
 def downgrade(op, tables, tester):
     op.execute(
         tables.logentrykind.delete().where(
-            tables.logentrykind.c.name
-            == op.inline_literal("create_robot_federation") | tables.logentrykind.c.name
-            == op.inline_literal("delete_robot_federation") | tables.logentrykind.c.name
-            == op.inline_literal("federated_robot_token_exchange")
+            tables.logentrykind.c.name.in_(
+                [
+                    "create_robot_federation",
+                    "delete_robot_federation",
+                    "federated_robot_token_exchange",
+                ]
+            )
         )
     )

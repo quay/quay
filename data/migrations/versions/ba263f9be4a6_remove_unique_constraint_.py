@@ -67,6 +67,26 @@ def upgrade(op, tables, tester):
 
 
 def downgrade(op, tables, tester):
+    bind = op.get_bind()
+    # need to drop foreign key first as foreign keys in MySQL automatically create an index
+    if bind.engine.name == "mysql":
+        op.drop_constraint(
+            "fk_namespaceautoprunepolicy_namespace_id_user",
+            "namespaceautoprunepolicy",
+            type_="foreignkey",
+        )
+        op.drop_constraint(
+            "fk_repositoryautoprunepolicy_repository_id_repository",
+            "repositoryautoprunepolicy",
+            type_="foreignkey",
+        )
+
+    # upgrade() replaced these unique indexes with non-unique ones of the same name, so the
+    # non-unique ones have to be dropped before the unique ones can be created again.
+    op.drop_index(
+        "namespaceautoprunepolicy_namespace_id",
+        "namespaceautoprunepolicy",
+    )
     op.create_index(
         "namespaceautoprunepolicy_namespace_id",
         "namespaceautoprunepolicy",
@@ -74,9 +94,30 @@ def downgrade(op, tables, tester):
         unique=True,
     )
 
+    op.drop_index(
+        "repositoryautoprunepolicy_repository_id",
+        "repositoryautoprunepolicy",
+    )
     op.create_index(
         "repositoryautoprunepolicy_repository_id",
         "repositoryautoprunepolicy",
         ["repository_id"],
         unique=True,
     )
+
+    # re-creating dropped foreign key after creating index
+    if bind.engine.name == "mysql":
+        op.create_foreign_key(
+            "fk_namespaceautoprunepolicy_namespace_id_user",
+            "namespaceautoprunepolicy",
+            "user",
+            ["namespace_id"],
+            ["id"],
+        )
+        op.create_foreign_key(
+            "fk_repositoryautoprunepolicy_repository_id_repository",
+            "repositoryautoprunepolicy",
+            "repository",
+            ["repository_id"],
+            ["id"],
+        )

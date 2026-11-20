@@ -26,8 +26,11 @@ def upgrade(op, tables, tester):
 def downgrade(op, tables, tester):
     op.execute(
         tables.logentrykind.delete().where(
-            tables.logentrykind.name
-            == op.inline_literal("oauth_token_assigned") | tables.logentrykind.name
-            == op.inline_literal("oauth_token_revoked")
+            tables.logentrykind.c.name.in_(
+                [
+                    "oauth_token_assigned",
+                    "oauth_token_revoked",
+                ]
+            )
         )
     )

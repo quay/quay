@@ -43,26 +43,40 @@ def upgrade(op, tables, tester):
 
     # Data migration: copy existing org emails to new table in a single statement
     conn = op.get_bind()
-    conn.execute(
-        sa.text(
-            """
+    if conn.dialect.name == "mysql":
+        # MySQL/MariaDB have no ON CONFLICT and quote identifiers with backticks.
+        conn.execute(sa.text("""
+            INSERT INTO organizationcontactemail (organization_id, contact_email)
+            SELECT id, email FROM `user`
+            WHERE organization = true
+              AND email IS NOT NULL
+              AND length(email) < 64
+            ON DUPLICATE KEY UPDATE organization_id = organization_id
+        """))
+    else:
+        conn.execute(sa.text("""
             INSERT INTO organizationcontactemail (organization_id, contact_email)
             SELECT id, email FROM "user"
             WHERE organization = true
               AND email IS NOT NULL
               AND length(email) < 64
             ON CONFLICT (organization_id) DO NOTHING
-        """
-        )
-    )
+        """))
 
-    tester.populate_table(
-        "organizationcontactemail",
-        [
-            ("organization_id", tester.TestDataType.Foreign("user")),
-            ("contact_email", tester.TestDataType.String),
-        ],
-    )
+    # Commented tester.populate_table() out, as the data copying above already
+    # inserts a row for every organization, and organization_id is unique,
+    # so a fake row would collide.
+    # Only fails if TEST_MIGRATE=true which tests the migration paths.
+    #
+    # See https://github.com/quay/quay/blob/master/data/migrations/migration.sh
+
+    # tester.populate_table(
+    #     "organizationcontactemail",
+    #     [
+    #         ("organization_id", tester.TestDataType.Foreign("user")),
+    #         ("contact_email", tester.TestDataType.String),
+    #     ],
+    # )
 
 
 def downgrade(op, tables, tester):
