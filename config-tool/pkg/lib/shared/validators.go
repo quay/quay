@@ -622,11 +622,18 @@ func ValidateDatabaseConnection(opts Options, rawURI, caCert string, threadlocal
 			})
 		}
 
-		// Connect and defer closing
+		// Parse the connection settings before connecting so configuration errors
+		// can be reported separately from server or network errors.
 		log.Debugf("Pinging database at hostname: %s.", fullHostName)
-		conn, err := pgx.Connect(ctx, dsn)
+		pgxConfig, err := pgx.ParseConfig(dsn)
 		if err != nil {
-			return err
+			return fmt.Errorf("invalid PostgreSQL connection configuration: %w", err)
+		}
+		// Turn off pgx default prepared statements mode - this is a one time connection
+		pgxConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+		conn, err := pgx.ConnectConfig(ctx, pgxConfig)
+		if err != nil {
+			return fmt.Errorf("could not connect to PostgreSQL: %w", err)
 		}
 		defer conn.Close(ctx)
 
