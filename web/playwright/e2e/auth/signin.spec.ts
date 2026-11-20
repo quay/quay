@@ -1,6 +1,7 @@
-import {test as base, expect, uniqueName} from '../../fixtures';
+import {test as base, expect, mailpit, uniqueName} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
 import {ApiClient} from '../../utils/api';
+import {API_URL} from '../../utils/config';
 
 const test = base;
 const SESSION_COOKIE_NAME = '_csrf_token';
@@ -374,6 +375,61 @@ test.describe(
         unauthenticatedPage.getByText(/is assigned to organization/i),
       ).toBeVisible();
     });
+
+    test(
+      'recovery link sent by a superuser signs the user in only once',
+      {tag: '@superuser'},
+      async ({adminClient, freshUser, browser, traceparent}) => {
+        const {username, email} = freshUser.user;
+
+        const superuserTarget = await adminClient.post(
+          `/api/v1/superusers/users/${TEST_USERS.admin.username}/sendrecovery`,
+        );
+        expect(superuserTarget.status()).toBe(400);
+
+        const send = await adminClient.post(
+          `/api/v1/superusers/users/${username}/sendrecovery`,
+        );
+        expect(send.status()).toBe(200);
+        expect(await send.json()).toEqual({email});
+
+        const message = await mailpit.waitForEmail(
+          (msg) =>
+            msg.Subject.endsWith('Account recovery') &&
+            msg.To.some((to) => to.Address === email),
+        );
+        if (!message) throw new Error('Expected recovery email not found');
+        const link = await mailpit.extractLink(message.ID);
+        if (!link) throw new Error('Expected recovery link not found');
+
+        const newContext = () =>
+          browser.newContext({
+            extraHTTPHeaders: {traceparent: traceparent.traceparent},
+          });
+
+        const first = await newContext();
+        try {
+          const page = await first.newPage();
+          await page.goto(link);
+          const whoami = await first.request.get(`${API_URL}/api/v1/user/`);
+          expect(whoami.status()).toBe(200);
+          expect((await whoami.json()).username).toBe(username);
+        } finally {
+          await first.close();
+        }
+
+        const second = await newContext();
+        try {
+          const page = await second.newPage();
+          await page.goto(link);
+          const whoami = await second.request.get(`${API_URL}/api/v1/user/`);
+          expect(whoami.status()).toBe(401);
+          await expect(page.getByText(/Invalid recovery code/)).toBeVisible();
+        } finally {
+          await second.close();
+        }
+      },
+    );
   },
 );
 
