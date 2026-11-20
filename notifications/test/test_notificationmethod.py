@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from httmock import HTTMock, urlmatch
 from mock import Mock, patch
@@ -138,6 +140,12 @@ def test_validate_hipchat(method_config, error_message, initialized_db):
     [
         ({}, "Missing Slack Callback URL"),
         ({"url": "http://example.com"}, None),
+        ({"url": "http://example.com", "template": "${vulnerability.id} in ${repository}"}, None),
+        ({"url": "http://example.com", "template": "${}"}, "Empty expression found"),
+        (
+            {"url": "http://example.com", "template": "Found ${foo bar}"},
+            "For expression `foo bar`: Parse error at 1:4 near token bar (ID)",
+        ),
     ],
 )
 def test_validate_slack(method_config, error_message, initialized_db):
@@ -241,3 +249,86 @@ def test_perform_http_call(method, method_config, netloc, initialized_db):
         )
 
     assert url_hit[0]
+
+
+@pytest.mark.parametrize(
+    "template, event_data, expected_text",
+    [
+        (None, {}, None),
+        ("Pushed ${updated_tags} to ${repository}", {}, "Pushed latest,foo to buynlarge/orgrepo"),
+        (
+            "Pushed ${updated_tags} to ${repository}",
+            {"updated_tags": ["latest"]},
+            "Pushed latest to buynlarge/orgrepo",
+        ),
+        ("Pushed by ${missing.field}", {}, "Pushed by (none)"),
+        ("${missing.field}", {}, "(none)"),
+        ("${updated_tags}", {}, '["latest", "foo"]'),
+        (
+            "Scan: <https://quay.example/repository/${repository}?tab=tags|scan page>\n"
+            "Runbook: <https://wiki.example.com/runbook>",
+            {},
+            "Scan: <https://quay.example/repository/buynlarge/orgrepo?tab=tags|scan page>\n"
+            "Runbook: <https://wiki.example.com/runbook>",
+        ),
+        ("See https://sec.example/x?a=1&b=2", {}, "See https://sec.example/x?a=1&b=2"),
+        (
+            "Build: ${trigger_metadata.commit_info.message}",
+            {
+                "trigger_metadata": {
+                    "commit_info": {"message": "fix <!channel> & <https://e.x|docs>"}
+                }
+            },
+            "Build: fix &lt;!channel&gt; &amp; &lt;https://e.x|docs&gt;",
+        ),
+    ],
+)
+def test_perform_slack_template(template, event_data, expected_text, initialized_db):
+    repository = Repository("buynlarge", "orgrepo")
+    method_config = {"url": "http://example.com"}
+    if template:
+        method_config["template"] = template
+
+    notification = Notification(
+        uuid="fake",
+        event_name="repo_push",
+        method_name=SlackMethod.method_name(),
+        event_config_dict={},
+        method_config_dict=method_config,
+        repository=repository,
+    )
+
+    event_handler = NotificationEvent.get_event("repo_push")
+    sample_data = event_handler.get_sample_data(repository.namespace_name, repository.name, {})
+    sample_data.update(event_data)
+    notification_data = {"event_data": sample_data, "performer_data": {}}
+    summary = event_handler.get_summary(sample_data, notification_data)
+    if expected_text is None:
+        expected_text = SlackMethod().format_for_slack(
+            event_handler.get_message(sample_data, notification_data)
+        )
+
+    payloads = []
+
+    @urlmatch(netloc="example.com")
+    def url_handler(_, request):
+        payloads.append(json.loads(request.body))
+        return ""
+
+    with HTTMock(url_handler):
+        SlackMethod().perform(notification, event_handler, notification_data)
+
+    assert payloads == [
+        {
+            "text": summary,
+            "username": "quayiobot",
+            "attachments": [
+                {
+                    "fallback": summary,
+                    "text": expected_text,
+                    "color": "good",
+                    "mrkdwn_in": ["text"],
+                }
+            ],
+        }
+    ]

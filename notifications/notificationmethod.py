@@ -13,7 +13,11 @@ import features
 from app import OVERRIDE_CONFIG_DIRECTORY, app, mail
 from data import model
 from util.fips import login_fips_safe
-from util.jsontemplate import JSONTemplate, JSONTemplateParseException
+from util.jsontemplate import (
+    JSONTemplate,
+    JSONTemplateParseException,
+    apply_data_to_obj,
+)
 from util.validation import validate_email
 from workers.queueworker import JobException
 
@@ -480,6 +484,17 @@ def adjust_tags(html):
     return s.get_data()
 
 
+def escape_for_slack(value):
+    # Slack mrkdwn escaping: https://api.slack.com/reference/surfaces/formatting#escaping
+    if isinstance(value, str):
+        return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    if isinstance(value, dict):
+        return {k: escape_for_slack(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [escape_for_slack(v) for v in value]
+    return value
+
+
 class SlackMethod(NotificationMethod):
     """
     Method for sending notifications to Slack via the API:
@@ -494,6 +509,13 @@ class SlackMethod(NotificationMethod):
     def validate(self, namespace_name, repo_name, config_data):
         if not config_data.get("url", ""):
             raise CannotValidateNotificationMethodException("Missing Slack Callback URL")
+
+        template = config_data.get("template")
+        if template:
+            try:
+                apply_data_to_obj(template, {})
+            except JSONTemplateParseException as jtpe:
+                raise CannotValidateNotificationMethodException(str(jtpe))
 
     def format_for_slack(self, message):
         message = message.replace("\n", " ")
@@ -522,7 +544,27 @@ class SlackMethod(NotificationMethod):
         }.get(level, "#ffffff")
 
         summary = event_handler.get_summary(notification_data["event_data"], notification_data)
-        message = event_handler.get_message(notification_data["event_data"], notification_data)
+
+        template = config_data.get("template")
+        if template:
+            try:
+                # Escape event values only; the template's own links and mentions must render.
+                text = apply_data_to_obj(
+                    template, escape_for_slack(notification_data["event_data"])
+                )
+            except JSONTemplateParseException as jtpe:
+                logger.exception("Got exception when trying to process template `%s`", template)
+                raise NotificationMethodPerformException(str(jtpe))
+
+            # A template that is exactly one placeholder yields the raw value.
+            if text is None:
+                text = "(none)"
+            elif not isinstance(text, str):
+                text = json.dumps(text)
+        else:
+            # The template is Slack mrkdwn already; only the HTML default message is converted.
+            message = event_handler.get_message(notification_data["event_data"], notification_data)
+            text = self.format_for_slack(message)
 
         headers = {"Content-type": "application/json"}
         payload = {
@@ -531,7 +573,7 @@ class SlackMethod(NotificationMethod):
             "attachments": [
                 {
                     "fallback": summary,
-                    "text": self.format_for_slack(message),
+                    "text": text,
                     "color": color,
                     "mrkdwn_in": ["text"],
                 }

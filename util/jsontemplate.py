@@ -56,8 +56,8 @@ def _process_string(str_value, data, missing_filler):
         if result is None:
             return missing_filler
 
-        if isinstance(result, list) and len(result) > 1:
-            return ",".join(result)
+        if isinstance(result, list):
+            return ",".join(str(r) for r in result)
 
         return str(result)
 

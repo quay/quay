@@ -68,6 +68,12 @@ from util.jsontemplate import JSONTemplate, JSONTemplateParseException
             {"hello": "tags: latest,prod,foo"},
             id="match multiples with inline expression",
         ),
+        pytest.param(
+            '{"hello": "tags: ${tags}"}',
+            {"tags": ["latest"]},
+            {"hello": "tags: latest"},
+            id="single-element list with inline expression",
+        ),
         pytest.param('{"hello": "}', {}, JSONTemplateParseException, id="invalid template"),
         pytest.param('{"hello": "${}"}', {}, JSONTemplateParseException, id="empty expression"),
         pytest.param('{"hello": "${;;}"}', {}, JSONTemplateParseException, id="invalid expression"),

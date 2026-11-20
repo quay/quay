@@ -6,6 +6,7 @@ import {
   WebhookReceiver,
   getTestUsers,
 } from '../../fixtures';
+import {API_URL} from '../../utils/config';
 
 test.describe('Repository Notifications', {tag: ['@repository']}, () => {
   test(
@@ -562,6 +563,113 @@ test.describe('Repository Notifications', {tag: ['@repository']}, () => {
       ).toBeVisible({timeout: 15000});
     },
   );
+
+  test('creates slack notification with message template', async ({
+    authenticatedPage,
+    authenticatedRequest,
+    api,
+  }) => {
+    const org = await api.organization('slacktpl');
+    const repo = await api.repository(org.name, 'slacktplrepo');
+    const template =
+      '${vulnerability.id} (${vulnerability.priority}) in ${repository}';
+
+    await authenticatedPage.goto(
+      `/repository/${org.name}/${repo.name}?tab=settings`,
+    );
+    await authenticatedPage
+      .getByTestId('settings-tab-eventsandnotifications')
+      .click();
+    await authenticatedPage
+      .getByRole('button', {name: 'Create notification'})
+      .click();
+    await authenticatedPage.getByTestId('notification-event-dropdown').click();
+    await authenticatedPage
+      .getByRole('menuitem', {name: 'Push to Repository'})
+      .click();
+    await authenticatedPage.getByTestId('notification-method-dropdown').click();
+    await authenticatedPage
+      .getByRole('menuitem', {name: 'Slack Notification'})
+      .click();
+    await authenticatedPage
+      .getByTestId('slack-webhook-url-field')
+      .fill('https://hooks.slack.com/services/TPL123/TPL456/tpltoken');
+    await authenticatedPage.getByTestId('slack-template-field').fill(template);
+    await authenticatedPage
+      .getByTestId('notification-title')
+      .fill('Slack Template Notification');
+    await authenticatedPage.getByTestId('notification-submit-btn').click();
+
+    const slackRow = authenticatedPage
+      .getByTestId('notifications-table')
+      .getByRole('rowgroup')
+      .filter({hasText: 'Slack Template Notification'});
+    await expect(slackRow).toBeVisible();
+    await slackRow.getByRole('button', {name: 'Details'}).click();
+    await expect(
+      slackRow.getByTestId('notification-config-details'),
+    ).toContainText('Message template');
+
+    const response = await authenticatedRequest.get(
+      `${API_URL}/api/v1/repository/${org.name}/${repo.name}/notification/`,
+    );
+    expect(response.ok()).toBe(true);
+    const {notifications} = await response.json();
+    const created = notifications.find(
+      (n) => n.title === 'Slack Template Notification',
+    );
+    expect(created.config.template).toBe(template);
+  });
+
+  test('shows API error for invalid slack message template', async ({
+    authenticatedPage,
+    api,
+  }) => {
+    const org = await api.organization('slackbadtpl');
+    const repo = await api.repository(org.name, 'slackbadtplrepo');
+    // An existing templated notification renders its details in the table.
+    await api.raw.createRepositoryNotification(
+      org.name,
+      repo.name,
+      'repo_push',
+      'slack',
+      {
+        url: 'https://hooks.slack.com/services/TPL123/TPL456/tpltoken',
+        template: '${repository}',
+      },
+      {},
+      'Existing Template Notification',
+    );
+
+    await authenticatedPage.goto(
+      `/repository/${org.name}/${repo.name}?tab=settings`,
+    );
+    await authenticatedPage
+      .getByTestId('settings-tab-eventsandnotifications')
+      .click();
+    await authenticatedPage
+      .getByRole('button', {name: 'Create notification'})
+      .click();
+    await authenticatedPage.getByTestId('notification-event-dropdown').click();
+    await authenticatedPage
+      .getByRole('menuitem', {name: 'Push to Repository'})
+      .click();
+    await authenticatedPage.getByTestId('notification-method-dropdown').click();
+    await authenticatedPage
+      .getByRole('menuitem', {name: 'Slack Notification'})
+      .click();
+    await authenticatedPage
+      .getByTestId('slack-webhook-url-field')
+      .fill('https://hooks.slack.com/services/TPL123/TPL456/tpltoken');
+    await authenticatedPage.getByLabel('Message template').fill('${}');
+    await authenticatedPage.getByTestId('notification-submit-btn').click();
+
+    await expect(
+      authenticatedPage
+        .getByTestId('create-notification-form')
+        .getByText('Empty expression found'),
+    ).toBeVisible();
+  });
 
   test(
     'creates image expiry notification with validation',

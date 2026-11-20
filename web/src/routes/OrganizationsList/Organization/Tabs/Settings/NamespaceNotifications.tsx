@@ -73,9 +73,32 @@ function NotificationConfig({
       );
     case NamespaceNotificationMethodType.slack:
       return (
-        <FlexItem style={{color: 'var(--pf-t--global--text--color--subtle)'}}>
-          Webhook URL: {String(notification.config?.url ?? '')}
-        </FlexItem>
+        <>
+          <FlexItem
+            style={{
+              color: 'var(--pf-t--global--text--color--subtle)',
+              marginBottom: 0,
+            }}
+          >
+            Webhook URL: {String(notification.config?.url ?? '')}
+          </FlexItem>
+          <Conditional if={!!notification.config?.template}>
+            <FlexItem
+              style={{color: 'var(--pf-t--global--text--color--subtle)'}}
+            >
+              Message template (optional):
+              <ClipboardCopy
+                isCode
+                isReadOnly
+                hoverTip="Copy"
+                clickTip="Copied"
+                variant={ClipboardCopyVariant.expansion}
+              >
+                {String(notification.config?.template)}
+              </ClipboardCopy>
+            </FlexItem>
+          </Conditional>
+        </>
       );
     case NamespaceNotificationMethodType.webhook:
       return (

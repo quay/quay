@@ -309,9 +309,25 @@ function NotificationConfig({notification}: {notification: RepoNotification}) {
       );
     case NotificationMethodType.slack:
       return (
-        <FlexItem id="slack-url" style={{color: 'grey'}}>
-          Webhook URL: {notification.config?.url}
-        </FlexItem>
+        <>
+          <FlexItem id="slack-url" style={{color: 'grey', marginBottom: '0px'}}>
+            Webhook URL: {notification.config?.url}
+          </FlexItem>
+          <Conditional if={!!notification.config?.template}>
+            <FlexItem id="slack-template" style={{color: 'grey'}}>
+              Message template (optional):
+              <ClipboardCopy
+                isCode
+                isReadOnly
+                hoverTip="Copy"
+                clickTip="Copied"
+                variant={ClipboardCopyVariant.expansion}
+              >
+                {notification.config?.template}
+              </ClipboardCopy>
+            </FlexItem>
+          </Conditional>
+        </>
       );
     case NotificationMethodType.webhook:
       return (
