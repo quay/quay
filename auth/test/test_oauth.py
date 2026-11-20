@@ -1,13 +1,14 @@
 import json
 from datetime import datetime, timedelta
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from peewee import PeeweeException
 
 from app import instance_keys
 from auth.auth_context_type import ValidatedAuthContext
-from auth.oauth import validate_bearer_auth
+from auth.oauth import validate_bearer_auth, validate_sso_oauth_token
+from auth.test.mock_oidc_server import generate_mock_oidc_token
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
 from data.database import APIToken, FederatedLogin, User
@@ -38,6 +39,35 @@ from util.security.registry_jwt import build_context_and_subject, generate_beare
 )
 def test_bearer(header, expected_result, app):
     assert validate_bearer_auth(header) == expected_result
+
+
+def test_sso_allowed_clients_rejects_token_without_azp(app):
+    service = MagicMock()
+    service.allowed_clients = ["allowed-client"]
+    service.decode_user_jwt.return_value = {
+        "iss": "https://mock-oidc-server.com",
+        "sub": "mock-subject",
+        "aud": "mock-client-id",
+    }
+    token = generate_mock_oidc_token(azp=None)
+
+    with (
+        patch(
+            "auth.oauth.oauth_login.get_service_by_issuer",
+            return_value=service,
+        ),
+        patch(
+            "auth.oauth.get_sub_username_email_from_token",
+            return_value=("mock-subject", "mockuser", "mock@example.com", {}),
+        ),
+        patch("auth.oauth._conduct_oauth_login") as conduct_oauth_login,
+    ):
+        result = validate_sso_oauth_token(token)
+
+    conduct_oauth_login.assert_not_called()
+    assert not result.auth_valid
+    assert result.kind == AuthKind.ssojwt
+    assert result.error_message == "Token is missing required 'azp' claim"
 
 
 def test_valid_oauth(app):
