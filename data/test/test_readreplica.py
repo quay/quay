@@ -1,11 +1,13 @@
+import logging
 import os
 import shutil
+from unittest.mock import MagicMock
 
 import pytest
 from peewee import OperationalError
 
 from data.database import User, configure, db_disallow_replica_use, read_only_config
-from data.readreplica import ReadOnlyModeException
+from data.readreplica import AutomaticFailoverWrapper, ReadOnlyModeException
 from test.fixtures import *
 from test.testconfig import FakeTransaction
 
@@ -118,3 +120,51 @@ def test_readreplica(init_db_path, tmpdir_factory):
             "DATABASE_SECRET_KEY": "QUAY_FIXTURE_ONLY-anothercrazykey!",
         }
     )
+
+
+class TestAutomaticFailoverWrapperLogging:
+    def _wrapper(self, replica_error=None):
+        replica = MagicMock()
+        replica.connect_params = {"host": "replica.test", "port": 5001}
+        if replica_error is not None:
+            replica.execute_sql.side_effect = replica_error
+        primary = MagicMock()
+        return AutomaticFailoverWrapper(replica, primary), replica, primary
+
+    def test_replica_use_is_logged_at_debug(self, caplog):
+        wrapper, replica, primary = self._wrapper()
+
+        with caplog.at_level(logging.DEBUG, logger="data.readreplica"):
+            wrapper.execute_sql("SELECT 1", ())
+
+        assert "Using read replica replica.test:5001" in caplog.text
+        replica.execute_sql.assert_called_once_with("SELECT 1", ())
+        primary.execute_sql.assert_not_called()
+
+    def test_replica_failure_logs_warning_and_falls_back_to_primary(self, caplog):
+        wrapper, replica, primary = self._wrapper(OperationalError("replica down"))
+
+        with caplog.at_level(logging.DEBUG, logger="data.readreplica"):
+            wrapper.execute_sql("SELECT 1", None)
+
+        warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+        assert len(warnings) == 1
+        assert "replica.test:5001" in warnings[0].getMessage()
+        assert "retrying query on the primary" in warnings[0].getMessage()
+        primary.execute_sql.assert_called_once_with("SELECT 1", None)
+
+    def test_query_parameters_are_never_logged(self, caplog):
+        wrapper, _, _ = self._wrapper()
+
+        with caplog.at_level(logging.DEBUG, logger="data.readreplica"):
+            wrapper.execute_sql("SELECT * FROM user WHERE email = %s", ("secret@example.com",))
+
+        assert "secret@example.com" not in caplog.text
+
+    def test_logged_sql_is_truncated(self, caplog):
+        wrapper, _, _ = self._wrapper()
+
+        with caplog.at_level(logging.DEBUG, logger="data.readreplica"):
+            wrapper.execute_sql("SELECT " + "x" * 500, ())
+
+        assert "x" * 200 not in caplog.text
