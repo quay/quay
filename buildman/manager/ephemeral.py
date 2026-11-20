@@ -929,6 +929,13 @@ class EphemeralBuilderManager(BuildStateInterface):
                 self._queue.incomplete(job_item, restore_retry=True)
                 continue
 
+            # schedule() and job_unschedulable() can delete the job key, so read it first.
+            try:
+                created_at = json.loads(self._orchestrator.get_key(job_id))["created_at"]
+            except (KeyError, OrchestratorError) as e:
+                logger.warning("Could not read job %s for queue duration metric: %s", job_id, e)
+                created_at = None
+
             try:
                 logger.debug("Scheduling build job %s", job_id)
                 schedule_success, retry_timeout = self.schedule(build_id)
@@ -950,10 +957,8 @@ class EphemeralBuilderManager(BuildStateInterface):
                 self._queue.incomplete(job_item, restore_retry=False, retry_after=retry_timeout)
 
             # record time spent in queue
-            job_data = self._orchestrator.get_key(job_id)
-            job_data_json = json.loads(job_data)
-            created_at = job_data_json["created_at"]
-            build_queue_duration.labels(schedule_success).observe(time.time() - created_at)
+            if created_at is not None:
+                build_queue_duration.labels(schedule_success).observe(time.time() - created_at)
 
 
 def _extract_current_step(current_status_string):
