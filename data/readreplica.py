@@ -70,13 +70,24 @@ class AutomaticFailoverWrapper(object):
 
     def execute_sql(self, sql, params=None):
         try:
+            logger.debug("Using read replica %s for query: %.200s", self._replica_label(), sql)
             return self._primary_db.execute_sql(sql, params)
         except OperationalError:
             if self._fallback_db is not None:
+                logger.warning(
+                    "Read replica %s failed, retrying query on the primary: %.200s",
+                    self._replica_label(),
+                    sql,
+                    exc_info=True,
+                )
                 try:
                     return self._fallback_db.execute_sql(sql, params)
                 except OperationalError:
                     raise
+
+    def _replica_label(self):
+        params = getattr(self._primary_db, "connect_params", None) or {}
+        return "%s:%s" % (params.get("host"), params.get("port"))
 
 
 class ReadReplicaSupportedModel(Model):
