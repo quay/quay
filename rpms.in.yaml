@@ -30,6 +30,8 @@ packages: [
   glibc-minimal-langpack,
   glibc-devel,
 ]
+moduleEnable:
+  - nginx:1.24
 contentOrigin:
   repofiles: ["./ubi.repo"]
 arches: [x86_64]
