@@ -207,23 +207,24 @@ func runQuayScenario(ctx context.Context, sc ScenarioSpec, scriptFS fs.FS, timeo
 		return result
 	}
 
-	waitErr := waitWithGracefulCancel(runCtx, cmd, quayShutdownGracePeriod)
+	waitRes := waitWithGracefulCancel(runCtx, cmd, quayShutdownGracePeriod)
 	result.Output = out.String()
 
-	if waitErr != nil {
-		// Check context cancellation FIRST so a timed-out or cancelled run is
-		// never masked as a skip (exit 2). Only map exit 2 to ResultSkipped
-		// when the context was not cancelled.
+	// Cancellation takes precedence over exit codes: if wait took the cancellation path,
+	// report failure regardless of exit code (including exit 0 after SIGTERM handling and exit 2).
+	// Only a non-cancelled run consults exit codes (0 pass, 2 skip, else fail).
+	if waitRes.Cancelled {
 		if errors.Is(runCtx.Err(), context.DeadlineExceeded) {
 			result.Result = ext.ResultFailed
-			result.Error = fmt.Sprintf("scenario timed out after %s: %v", timeout, waitErr)
+			result.Error = fmt.Sprintf("scenario timed out after %s: %v", timeout, waitRes.Err)
 			return result
 		}
-		if errors.Is(runCtx.Err(), context.Canceled) {
-			result.Result = ext.ResultFailed
-			result.Error = fmt.Sprintf("scenario was cancelled: %v", waitErr)
-			return result
-		}
+		result.Result = ext.ResultFailed
+		result.Error = fmt.Sprintf("scenario was cancelled: %v", waitRes.Err)
+		return result
+	}
+
+	if waitRes.Err != nil {
 		if cmd.ProcessState != nil && cmd.ProcessState.ExitCode() == 2 {
 			result.Result = ext.ResultSkipped
 			result.Error = "resource not deployed"
@@ -231,7 +232,7 @@ func runQuayScenario(ctx context.Context, sc ScenarioSpec, scriptFS fs.FS, timeo
 		}
 
 		result.Result = ext.ResultFailed
-		result.Error = fmt.Sprintf("scenario exited with error: %v", waitErr)
+		result.Error = fmt.Sprintf("scenario exited with error: %v", waitRes.Err)
 		return result
 	}
 
@@ -239,23 +240,31 @@ func runQuayScenario(ctx context.Context, sc ScenarioSpec, scriptFS fs.FS, timeo
 	return result
 }
 
+// waitResult reports the outcome of waitWithGracefulCancel.
+type waitResult struct {
+	Err       error
+	Cancelled bool
+}
+
 // waitWithGracefulCancel waits for a command to complete or terminates it gracefully on context cancellation.
 // It sends SIGTERM first, waits gracePeriod, then sends SIGKILL if the process hasn't exited.
-func waitWithGracefulCancel(ctx context.Context, cmd *exec.Cmd, gracePeriod time.Duration) error {
+// Cancelled is true when the context fired and the graceful shutdown path ran, even if the child
+// later exits 0 or 2 after handling SIGTERM; callers must check Cancelled before exit codes.
+func waitWithGracefulCancel(ctx context.Context, cmd *exec.Cmd, gracePeriod time.Duration) waitResult {
 	done := make(chan error, 1)
 	go func() { done <- cmd.Wait() }()
 
 	select {
 	case err := <-done:
-		return err
+		return waitResult{Err: err, Cancelled: false}
 	case <-ctx.Done():
 		signalProcessGroup(cmd, syscall.SIGTERM)
 		select {
 		case err := <-done:
-			return err
+			return waitResult{Err: err, Cancelled: true}
 		case <-time.After(gracePeriod):
 			signalProcessGroup(cmd, syscall.SIGKILL)
-			return <-done
+			return waitResult{Err: <-done, Cancelled: true}
 		}
 	}
 }
@@ -327,10 +336,7 @@ func buildEnv(overrides, envFrom map[string]string) []string {
 	}
 
 	for k, v := range overrides {
-		// Preserve ambient non-empty values; scenario EnvVars fill only missing or empty keys.
-		if existing, ok := env[k]; ok && existing != "" {
-			continue
-		}
+		// Scenario-declared values override ambient; ambient fills only keys the scenario does not declare.
 		env[k] = v
 	}
 

@@ -125,11 +125,15 @@ func envMap(env []string) map[string]string {
 
 func TestBuildEnv(t *testing.T) {
 	t.Setenv("ADAPTER_TEST_AMBIENT", "ambient-value")
+	t.Setenv("ADAPTER_TEST_CONFLICT", "ambient-original")
 
 	env := buildEnv(
-		map[string]string{"ADAPTER_TEST_OVERRIDE": "overridden"},
 		map[string]string{
-			"ADAPTER_TEST_COPIED": "ADAPTER_TEST_AMBIENT",
+			"ADAPTER_TEST_CONFLICT": "declared-wins",
+			"ADAPTER_TEST_OVERRIDE": "overridden",
+		},
+		map[string]string{
+			"ADAPTER_TEST_COPIED":  "ADAPTER_TEST_AMBIENT",
 			"ADAPTER_TEST_MISSING": "ADAPTER_TEST_DOES_NOT_EXIST",
 			"":                     "ignored",
 		},
@@ -137,10 +141,13 @@ func TestBuildEnv(t *testing.T) {
 	m := envMap(env)
 
 	if m["ADAPTER_TEST_AMBIENT"] != "ambient-value" {
-		t.Errorf("ambient variable not preserved: %v", m["ADAPTER_TEST_AMBIENT"])
+		t.Errorf("ambient undeclared not preserved: %v", m["ADAPTER_TEST_AMBIENT"])
 	}
 	if m["ADAPTER_TEST_OVERRIDE"] != "overridden" {
 		t.Errorf("override not applied: %v", m["ADAPTER_TEST_OVERRIDE"])
+	}
+	if m["ADAPTER_TEST_CONFLICT"] != "declared-wins" {
+		t.Errorf("declared value should override ambient: got %v want declared-wins", m["ADAPTER_TEST_CONFLICT"])
 	}
 	if m["ADAPTER_TEST_COPIED"] != "ambient-value" {
 		t.Errorf("envFrom copy not applied: %v", m["ADAPTER_TEST_COPIED"])

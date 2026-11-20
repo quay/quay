@@ -26,7 +26,7 @@ type ScenarioSpec struct {
 	Tags []string `json:"tags,omitempty"`
 
 	// EnvVars is the scenario parameter surface.
-	// Ambient non-empty values are preserved; EnvVars fill only missing or empty keys.
+	// Scenario-declared values override ambient; ambient fills only keys the scenario does not declare.
 	EnvVars map[string]string `json:"envVars,omitempty"`
 
 	// EnvFrom copies an ambient env key onto another name before EnvVars apply.
