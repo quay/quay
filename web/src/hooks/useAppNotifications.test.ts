@@ -134,4 +134,17 @@ describe('useAppNotifications', () => {
     expect(result.current.notifications).toEqual([]);
     expect(result.current.unreadCount).toBe(0);
   });
+
+  it('flags additional when more notifications exist than fetched', async () => {
+    vi.mocked(axios.get).mockResolvedValueOnce({
+      data: {
+        notifications: [{id: '1', level: 'info', read: false}],
+        additional: true,
+      },
+    });
+
+    const {result} = renderHook(() => useAppNotifications(), {wrapper});
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.additional).toBe(true);
+  });
 });
