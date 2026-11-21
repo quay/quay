@@ -133,7 +133,12 @@ class ProxyModel(OCIModel):
         # we only create a repository for images that exist upstream, and if
         # we're not given a manifest reference then we can't check whether the
         # image exists upstream or not, so we refuse to create the repo.
-        if manifest_ref is None or conflicts_with_build_route(repo_name):
+        if manifest_ref is None:
+            return None
+
+        if conflicts_with_build_route(repo_name):
+            if raise_on_error:
+                raise RepositoryDoesNotExist("Repository name conflicts with a build route")
             return None
 
         try:

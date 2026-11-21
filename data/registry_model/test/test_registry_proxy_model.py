@@ -23,6 +23,7 @@ from data.database import (
 from data.model import (
     ImmutableTagException,
     QuotaExceededException,
+    RepositoryDoesNotExist,
     TagDoesNotExist,
     namespacequota,
     oci,
@@ -186,8 +187,25 @@ class TestLookUpRepositoryWithRepoCreationVisibilityFlag:
         assert get_repository(self.orgname, name) is None
 
     @pytest.mark.parametrize("extended", [False, True])
+    @pytest.mark.parametrize("name", ["library/build", "library/build/ambiguous"])
     @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
-    def test_existing_build_route_name_remains_readable(self, extended):
+    def test_build_route_name_raises_when_requested(self, extended, name):
+        with patch.object(self.proxy_model._proxy, "manifest_exists") as manifest_exists:
+            with patch(
+                "data.registry_model.registry_proxy_model.features.EXTENDED_REPOSITORY_NAMES",
+                extended,
+            ):
+                with pytest.raises(RepositoryDoesNotExist):
+                    self.proxy_model.lookup_repository(
+                        self.orgname, name, manifest_ref=self.tag, raise_on_error=True
+                    )
+            manifest_exists.assert_not_called()
+        assert get_repository(self.orgname, name) is None
+
+    @pytest.mark.parametrize("extended", [False, True])
+    @pytest.mark.parametrize("raise_on_error", [False, True])
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_existing_build_route_name_remains_readable(self, extended, raise_on_error):
         name = "library/build/existing"
         create_repository(self.orgname, name, self.user)
         with patch.object(self.proxy_model._proxy, "manifest_exists") as manifest_exists:
@@ -196,7 +214,7 @@ class TestLookUpRepositoryWithRepoCreationVisibilityFlag:
                 extended,
             ):
                 repo_ref = self.proxy_model.lookup_repository(
-                    self.orgname, name, manifest_ref=self.tag
+                    self.orgname, name, manifest_ref=self.tag, raise_on_error=raise_on_error
                 )
             manifest_exists.assert_not_called()
         assert repo_ref is not None
