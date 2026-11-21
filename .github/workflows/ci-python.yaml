@@ -76,7 +76,7 @@ jobs:
       run: cd ./web && npm ci
 
     - name: Run pre-commit checks
-      uses: pre-commit/action@v3.0.0
+      uses: pre-commit/action@v3.0.1
       with:
         extra_args: --from-ref origin/${{ github.base_ref }} --to-ref HEAD --verbose
 
