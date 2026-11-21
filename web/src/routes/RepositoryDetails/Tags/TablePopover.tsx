@@ -22,51 +22,27 @@ export default function TablePopover(props: TablePopoverProps) {
       bodyContent={
         <div>
           <Content component="p" style={{fontWeight: 'bold'}}>
-            Podman Pull (By Tag)
+            Image (By Tag)
           </Content>
           <ClipboardCopy
-            data-testid="copy-tag-podman"
+            data-testid="copy-tag"
             isReadOnly
             hoverTip="Copy"
             clickTip="Copied"
           >
-            {`podman pull ${domain}/${props.org}/${props.repo}:${props.tag}`}
+            {`${domain}/${props.org}/${props.repo}:${props.tag}`}
           </ClipboardCopy>
           <br />
           <Content component="p" style={{fontWeight: 'bold'}}>
-            Podman Pull (By Digest)
+            Image (By Digest)
           </Content>
           <ClipboardCopy
-            data-testid="copy-digest-podman"
+            data-testid="copy-digest"
             isReadOnly
             hoverTip="Copy"
             clickTip="Copied"
           >
-            {`podman pull ${domain}/${props.org}/${props.repo}@${props.digest}`}
-          </ClipboardCopy>
-          <br />
-          <Content component="p" style={{fontWeight: 'bold'}}>
-            Docker Pull (By Tag)
-          </Content>
-          <ClipboardCopy
-            data-testid="copy-tag-docker"
-            isReadOnly
-            hoverTip="Copy"
-            clickTip="Copied"
-          >
-            {`docker pull ${domain}/${props.org}/${props.repo}:${props.tag}`}
-          </ClipboardCopy>
-          <br />
-          <Content component="p" style={{fontWeight: 'bold'}}>
-            Docker Pull (By Digest)
-          </Content>
-          <ClipboardCopy
-            data-testid="copy-digest-docker"
-            isReadOnly
-            hoverTip="Copy"
-            clickTip="Copied"
-          >
-            {`docker pull ${domain}/${props.org}/${props.repo}@${props.digest}`}
+            {`${domain}/${props.org}/${props.repo}@${props.digest}`}
           </ClipboardCopy>
         </div>
       }
