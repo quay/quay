@@ -40,7 +40,7 @@ jobs:
           echo ${{ github.event.pull_request.number }} > ./pr-data/pr_number.txt
 
       - name: Upload PR data
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pr-data-${{ github.event.pull_request.number }}
           path: pr-data/
