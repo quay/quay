@@ -1194,7 +1194,7 @@ CONFIG_SCHEMA = {
         },
         "SSRF_ALLOWED_HOSTS": {
             "type": "array",
-            "description": "List of hostnames or CIDR ranges allowed to bypass SSRF protection for repository and organization mirror source registries, proxy cache registries, and export log callback URLs. Use for enterprise deployments where endpoints are on private networks.",
+            "description": "List of hostnames or CIDR ranges allowed to bypass SSRF protection for repository and organization mirror source registries, proxy cache registries, export log callback URLs, and notification webhook/Slack callback URLs. Use for enterprise deployments where endpoints are on private networks.",
             "uniqueItems": True,
             "items": {"type": "string"},
             "x-example": ["internal-harbor.corp.example.com", "10.0.0.0/8"],
@@ -1575,7 +1575,7 @@ CONFIG_SCHEMA = {
         # Webhook blacklist.
         "WEBHOOK_HOSTNAME_BLACKLIST": {
             "type": "array",
-            "description": "The set of hostnames to disallow from webhooks when validating, beyond localhost",
+            "description": "Additional hostnames to disallow from webhook and Slack notification callbacks, on top of shared SSRF protection (private/loopback/metadata ranges and DNS checks)",
             "x-example": ["somexternaldomain.com"],
         },
         "CREATE_PRIVATE_REPO_ON_PUSH": {

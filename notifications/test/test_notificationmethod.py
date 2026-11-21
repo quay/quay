@@ -10,11 +10,14 @@ from notifications.notificationmethod import (
     EmailMethod,
     FlowdockMethod,
     HipchatMethod,
+    NotificationMethodPerformException,
     QuayNotificationMethod,
     SlackMethod,
     WebhookMethod,
 )
 from test.fixtures import *
+
+_PUBLIC_DNS = [(2, 1, 6, "", ("93.184.216.34", 0))]
 
 
 class TestSlackFormatting:
@@ -101,11 +104,16 @@ def test_validate_email(method_config, error_message, initialized_db):
         ({"url": "http://localhost/"}, "Invalid webhook URL"),
         ({"url": "http://localhost:5000/"}, "Invalid webhook URL"),
         ({"url": "https://127.0.0.1:5000/"}, "Invalid webhook URL"),
+        ({"url": "http://10.0.0.1/"}, "Invalid webhook URL"),
+        ({"url": "http://169.254.169.254/latest/meta-data/"}, "Invalid webhook URL"),
+        ({"url": "http://host.containers.internal:9999/ssrf"}, "Invalid webhook URL"),
+        ({"url": "http://user:pass@example.com/"}, "Invalid webhook URL"),
     ],
 )
 def test_validate_webhook(method_config, error_message, initialized_db):
     method = WebhookMethod()
-    assert_validated(method, method_config, error_message, "devtable", "simple")
+    with patch("util.security.ssrf._getaddrinfo", return_value=_PUBLIC_DNS):
+        assert_validated(method, method_config, error_message, "devtable", "simple")
 
 
 @pytest.mark.parametrize(
@@ -138,11 +146,14 @@ def test_validate_hipchat(method_config, error_message, initialized_db):
     [
         ({}, "Missing Slack Callback URL"),
         ({"url": "http://example.com"}, None),
+        ({"url": "http://10.0.0.1/hooks"}, "Invalid Slack Callback URL"),
+        ({"url": "http://localhost/hooks"}, "Invalid Slack Callback URL"),
     ],
 )
 def test_validate_slack(method_config, error_message, initialized_db):
     method = SlackMethod()
-    assert_validated(method, method_config, error_message, "devtable", "simple")
+    with patch("util.security.ssrf._getaddrinfo", return_value=_PUBLIC_DNS):
+        assert_validated(method, method_config, error_message, "devtable", "simple")
 
 
 @pytest.mark.parametrize(
@@ -208,7 +219,7 @@ def test_perform_email(initialized_db):
 @pytest.mark.parametrize(
     "method, method_config, netloc",
     [
-        (WebhookMethod, {"url": "http://testurl"}, "testurl"),
+        (WebhookMethod, {"url": "http://example.com/hook"}, "example.com"),
         (FlowdockMethod, {"flow_api_token": "token"}, "api.flowdock.com"),
         (HipchatMethod, {"notification_token": "token", "room_id": "foo"}, "api.hipchat.com"),
         (SlackMethod, {"url": "http://example.com"}, "example.com"),
@@ -235,9 +246,106 @@ def test_perform_http_call(method, method_config, netloc, initialized_db):
         url_hit[0] = True
         return ""
 
-    with HTTMock(url_handler):
-        method().perform(
-            notification, event_handler, {"event_data": sample_data, "performer_data": {}}
-        )
+    with patch("util.security.ssrf._getaddrinfo", return_value=_PUBLIC_DNS):
+        with HTTMock(url_handler):
+            method().perform(
+                notification, event_handler, {"event_data": sample_data, "performer_data": {}}
+            )
 
     assert url_hit[0]
+
+
+@pytest.mark.parametrize(
+    "method, method_config, error_message",
+    [
+        (
+            WebhookMethod,
+            {"url": "http://10.0.0.1/ssrf"},
+            "Invalid webhook URL",
+        ),
+        (
+            WebhookMethod,
+            {"url": "http://host.containers.internal:9999/ssrf"},
+            "Invalid webhook URL",
+        ),
+        (
+            SlackMethod,
+            {"url": "http://169.254.169.254/hooks"},
+            "Invalid Slack Callback URL",
+        ),
+    ],
+)
+def test_perform_blocks_ssrf_urls(method, method_config, error_message, initialized_db):
+    repository = Repository("buynlarge", "orgrepo")
+    notification = Notification(
+        uuid="fake",
+        event_name="repo_push",
+        method_name=method.method_name(),
+        event_config_dict={},
+        method_config_dict=method_config,
+        repository=repository,
+    )
+
+    event_handler = NotificationEvent.get_event("repo_push")
+    sample_data = event_handler.get_sample_data(repository.namespace_name, repository.name, {})
+
+    with patch("notifications.notificationmethod.requests.post") as mock_post:
+        with pytest.raises(NotificationMethodPerformException) as exc:
+            method().perform(
+                notification, event_handler, {"event_data": sample_data, "performer_data": {}}
+            )
+        assert str(exc.value) == error_message
+        mock_post.assert_not_called()
+
+
+def test_validate_webhook_extra_hostname_blacklist(initialized_db):
+    method = WebhookMethod()
+    with patch.dict(
+        "notifications.notificationmethod.app.config",
+        {"WEBHOOK_HOSTNAME_BLACKLIST": ["evil.example.com"]},
+    ):
+        with patch("util.security.ssrf._getaddrinfo", return_value=_PUBLIC_DNS):
+            assert_validated(
+                method,
+                {"url": "https://evil.example.com/hook"},
+                "Invalid webhook URL",
+                "devtable",
+                "simple",
+            )
+
+
+@pytest.mark.parametrize(
+    "method, method_config",
+    [
+        (WebhookMethod, {"url": "http://example.com/hook"}),
+        (SlackMethod, {"url": "http://example.com/hooks"}),
+    ],
+)
+def test_perform_http_disables_redirects(method, method_config, initialized_db):
+    repository = Repository("buynlarge", "orgrepo")
+    notification = Notification(
+        uuid="fake",
+        event_name="repo_push",
+        method_name=method.method_name(),
+        event_config_dict={},
+        method_config_dict=method_config,
+        repository=repository,
+    )
+
+    event_handler = NotificationEvent.get_event("repo_push")
+    sample_data = event_handler.get_sample_data(repository.namespace_name, repository.name, {})
+
+    mock_resp = Mock()
+    mock_resp.status_code = 200
+    mock_resp.content = b""
+
+    with patch("util.security.ssrf._getaddrinfo", return_value=_PUBLIC_DNS):
+        with patch(
+            "notifications.notificationmethod.requests.post", return_value=mock_resp
+        ) as mock_post:
+            method().perform(
+                notification, event_handler, {"event_data": sample_data, "performer_data": {}}
+            )
+
+    assert mock_post.call_count == 1
+    assert mock_post.call_args.kwargs.get("allow_redirects") is False
