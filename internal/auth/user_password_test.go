@@ -2,6 +2,7 @@ package auth
 
 import (
 	"database/sql"
+	"math"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -197,6 +198,25 @@ func TestCredentialCache_SecretIsNotStoredAndUserIsIsolated(t *testing.T) {
 		if string(entry.secretMAC) == "alice-secret" {
 			t.Fatal("cache must not hold the plaintext secret")
 		}
+	}
+}
+
+func TestCredentialCache_OverflowTTLClamped(t *testing.T) {
+	// A caller that converts a very large number of seconds to time.Duration via
+	//   time.Duration(n) * time.Second
+	// will produce a negative duration when n > math.MaxInt64/int64(time.Second).
+	// newCredentialCache must clamp rather than silently return nil (disabled).
+	overflowSeconds := math.MaxInt64/int64(time.Second) + 1
+	overflow := time.Duration(overflowSeconds) * time.Second // negative due to overflow
+	if overflow >= 0 {
+		t.Skip("no overflow on this platform; test is only meaningful when the multiplication wraps")
+	}
+	cache := newCredentialCache(overflow)
+	if cache == nil {
+		t.Fatal("overflow TTL must not silently disable the cache; expected clamping to max safe duration")
+	}
+	if cache.ttl <= 0 {
+		t.Fatalf("clamped TTL must be positive, got %v", cache.ttl)
 	}
 }
 
