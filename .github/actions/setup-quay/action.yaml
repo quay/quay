@@ -95,7 +95,7 @@ runs:
 
     - name: Build Quay image (with cache)
       if: inputs.build-image == 'true' && inputs.use-gha-cache == 'true'
-      uses: docker/build-push-action@v6
+      uses: docker/build-push-action@v7
       with:
         context: .
         load: true
@@ -105,7 +105,7 @@ runs:
 
     - name: Build Quay image (no cache)
       if: inputs.build-image == 'true' && inputs.use-gha-cache != 'true'
-      uses: docker/build-push-action@v6
+      uses: docker/build-push-action@v7
       with:
         context: .
         load: true
