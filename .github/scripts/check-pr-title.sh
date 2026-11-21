@@ -11,8 +11,8 @@ else
   title="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq .title)"
 fi
 
-full_regex='^(\[(redhat|mirror-registry)-[0-9]+\.[0-9]+\] )?(PROJQUAY-[0-9]+|QUAYIO-[0-9]+|NO-ISSUE): [a-z]+(\([^)]+\))?: .+$'
-prefix_regex='^(\[(redhat|mirror-registry)-[0-9]+\.[0-9]+\] )?(PROJQUAY-[0-9]+|QUAYIO-[0-9]+|NO-ISSUE): '
+full_regex='^(\[(redhat|mirror-registry)-[0-9]+\.[0-9]+\] )?((PROJQUAY-[0-9]+|QUAYIO-[0-9]+)(,[[:space:]]*(PROJQUAY-[0-9]+|QUAYIO-[0-9]+))*|NO-ISSUE): [a-z]+(\([^)]+\))?: .+$'
+prefix_regex='^(\[(redhat|mirror-registry)-[0-9]+\.[0-9]+\] )?((PROJQUAY-[0-9]+|QUAYIO-[0-9]+)(,[[:space:]]*(PROJQUAY-[0-9]+|QUAYIO-[0-9]+))*|NO-ISSUE): '
 type_regex='^[a-z]+(\([^)]+\))?: '
 
 if [[ "$title" =~ $full_regex ]]; then
@@ -37,11 +37,14 @@ fi
 
 echo ""
 echo 'Expected shape: "<TICKET>: <type>(<scope>): <description>", where <type> is lowercase letters and "(<scope>)" is optional.'
+echo 'Multiple comma-separated Jira keys are accepted for backport PRs that bundle related fixes.'
 echo "Examples:"
 echo "  PROJQUAY-1234: fix(api): handle empty manifest list"
 echo "  NO-ISSUE: docs(security): clarify the disclosure policy"
 echo "  [redhat-3.17] PROJQUAY-1234: fix(ui): correct tag sort order"
 echo "  [mirror-registry-3.0] PROJQUAY-1234: fix(omr): correct upgrade health check"
+echo "  PROJQUAY-1234, PROJQUAY-5678: fix(conf): backport two related fixes"
+echo "  [redhat-3.16] PROJQUAY-1234, PROJQUAY-5678: fix(conf): backport two related fixes"
 echo ""
 echo "Edit the PR title, then re-run this job. The job reads the current title, so a re-run picks up the edit."
 
