@@ -314,6 +314,23 @@ def test_validate_webhook_extra_hostname_blacklist(initialized_db):
             )
 
 
+def test_validate_webhook_passes_environment_proxy_config(initialized_db):
+    method = WebhookMethod()
+    proxy = {"http_proxy": "http://proxy.example:8080", "https_proxy": None, "no_proxy": None}
+    with patch(
+        "notifications.notificationmethod.get_environment_proxy_config",
+        return_value=proxy,
+    ):
+        with patch(
+            "notifications.notificationmethod.validate_external_registry_url"
+        ) as mock_validate:
+            method.validate("devtable", "simple", {"url": "https://example.com/hook"})
+
+    mock_validate.assert_called_once()
+    assert mock_validate.call_args.kwargs.get("proxy_config") == proxy
+    assert mock_validate.call_args.kwargs.get("resolve_dns") is True
+
+
 @pytest.mark.parametrize(
     "method, method_config",
     [

@@ -14,7 +14,7 @@ from app import OVERRIDE_CONFIG_DIRECTORY, app, mail
 from data import model
 from util.fips import login_fips_safe
 from util.jsontemplate import JSONTemplate, JSONTemplateParseException
-from util.security.ssrf import validate_external_registry_url
+from util.security.ssrf import get_environment_proxy_config, validate_external_registry_url
 from util.validation import validate_email
 from workers.queueworker import JobException
 
@@ -51,13 +51,16 @@ def _validate_outbound_notification_url(url):
     Validate a user-supplied notification callback URL against SSRF rules.
 
     Uses the shared helper (DNS + private/metadata IP checks) already applied to
-    mirrors, proxy cache, and export-log callbacks. Also honors the legacy
+    mirrors, proxy cache, and export-log callbacks. Passes process proxy env so
+    allowlisted hosts that only resolve via HTTP(S)_PROXY are handled the same
+    way as other SSRF-validated outbound URLs. Also honors the legacy
     WEBHOOK_HOSTNAME_BLACKLIST config as an extra deny list.
     """
     validate_external_registry_url(
         url,
         resolve_dns=True,
         allowed_hosts=app.config.get("SSRF_ALLOWED_HOSTS", []),
+        proxy_config=get_environment_proxy_config(),
     )
 
     hostname = (urlparse(url).hostname or "").lower()
