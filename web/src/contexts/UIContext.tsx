@@ -24,6 +24,7 @@ interface UIContextType {
   // Sidebar state
   isSidebarOpen: boolean;
   toggleSidebar: () => void;
+  setIsMobileView: (isMobileView: boolean) => void;
 
   // Alert state
   alerts: AlertDetails[];
@@ -31,6 +32,8 @@ interface UIContextType {
   removeAlert: (key: string) => void;
   clearAllAlerts: () => void;
 }
+
+const XL_BREAKPOINT_PX = 1200;
 
 const UIContext = createContext<UIContextType | undefined>(undefined);
 
@@ -40,21 +43,37 @@ interface UIProviderProps {
 
 export function UIProvider({children}: UIProviderProps) {
   // Sidebar state with localStorage persistence
-  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
-    const stored = localStorage.getItem('quay-sidebar-open');
-    return stored !== null ? stored === 'true' : true; // Default to open
-  });
+  const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState<boolean>(
+    () => {
+      const stored = localStorage.getItem('quay-sidebar-open');
+      return stored !== null ? stored === 'true' : true; // Default to open
+    },
+  );
+  // Below PF's xl breakpoint the sidebar overlays content, so it starts
+  // closed and is not persisted.
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isMobileView, setIsMobileView] = useState(false);
+  const isSidebarOpen = isMobileView
+    ? isMobileSidebarOpen
+    : isDesktopSidebarOpen;
 
   // Alert state
   const [alerts, setAlerts] = useState<AlertDetails[]>([]);
 
   // Persist sidebar state to localStorage
   useEffect(() => {
-    localStorage.setItem('quay-sidebar-open', String(isSidebarOpen));
-  }, [isSidebarOpen]);
+    localStorage.setItem('quay-sidebar-open', String(isDesktopSidebarOpen));
+  }, [isDesktopSidebarOpen]);
 
   const toggleSidebar = useCallback(() => {
-    setIsSidebarOpen((prev) => !prev);
+    // PF debounces onPageResize by 250ms but its CSS switches the sidebar
+    // layout at xl (75rem) at once, so read the viewport, not the flag.
+    const mobileView = window.innerWidth < XL_BREAKPOINT_PX;
+    setIsMobileView(mobileView);
+    const setOpen = mobileView
+      ? setIsMobileSidebarOpen
+      : setIsDesktopSidebarOpen;
+    setOpen((prev) => !prev);
   }, []);
 
   const addAlert = useCallback((alert: AlertDetails) => {
@@ -77,6 +96,7 @@ export function UIProvider({children}: UIProviderProps) {
     () => ({
       isSidebarOpen,
       toggleSidebar,
+      setIsMobileView,
       alerts,
       addAlert,
       removeAlert,
