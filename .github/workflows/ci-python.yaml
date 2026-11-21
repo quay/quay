@@ -20,7 +20,7 @@ jobs:
     - name: Set up Python 3.12
       uses: actions/setup-python@v4
       with:
-        python-version: 3.12
+        python-version: 3.15
         cache: 'pip'
         cache-dependency-path: |
           requirements.txt
@@ -63,7 +63,7 @@ jobs:
     - name: Set up Python 3.12
       uses: actions/setup-python@v4
       with:
-        python-version: 3.12
+        python-version: 3.15
 
     - name: Set up Node 18
       uses: actions/setup-node@v3
@@ -91,7 +91,7 @@ jobs:
     - name: Set up Python 3.12
       uses: actions/setup-python@v4
       with:
-        python-version: 3.12
+        python-version: 3.15
         cache: 'pip'
         cache-dependency-path: |
           requirements.txt
@@ -124,7 +124,7 @@ jobs:
     - name: Set up Python 3.12
       uses: actions/setup-python@v4
       with:
-        python-version: 3.12
+        python-version: 3.15
         cache: 'pip'
         cache-dependency-path: |
           requirements.txt
@@ -161,7 +161,7 @@ jobs:
     - name: Set up Python 3.12
       uses: actions/setup-python@v4
       with:
-        python-version: 3.12
+        python-version: 3.15
         cache: 'pip'
         cache-dependency-path: |
           requirements.txt
@@ -197,7 +197,7 @@ jobs:
     - name: Set up Python 3.12
       uses: actions/setup-python@v4
       with:
-        python-version: 3.12
+        python-version: 3.15
         cache: 'pip'
         cache-dependency-path: |
           requirements.txt
@@ -225,7 +225,7 @@ jobs:
     - name: Set up Python 3.12
       uses: actions/setup-python@v4
       with:
-        python-version: 3.12
+        python-version: 3.15
         cache: 'pip'
         cache-dependency-path: |
           requirements.txt
