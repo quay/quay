@@ -19,7 +19,7 @@ jobs:
     if: github.event_name == 'pull_request_target'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.base.ref }}
 
