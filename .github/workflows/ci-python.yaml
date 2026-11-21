@@ -18,7 +18,7 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Set up Python 3.12
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v7
       with:
         python-version: 3.12
         cache: 'pip'
@@ -61,7 +61,7 @@ jobs:
         fetch-depth: 0  # fetch all commits and branches for pre-commit
 
     - name: Set up Python 3.12
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v7
       with:
         python-version: 3.12
 
@@ -89,7 +89,7 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Set up Python 3.12
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v7
       with:
         python-version: 3.12
         cache: 'pip'
@@ -122,7 +122,7 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Set up Python 3.12
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v7
       with:
         python-version: 3.12
         cache: 'pip'
@@ -159,7 +159,7 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Set up Python 3.12
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v7
       with:
         python-version: 3.12
         cache: 'pip'
@@ -195,7 +195,7 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Set up Python 3.12
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v7
       with:
         python-version: 3.12
         cache: 'pip'
@@ -223,7 +223,7 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Set up Python 3.12
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v7
       with:
         python-version: 3.12
         cache: 'pip'
