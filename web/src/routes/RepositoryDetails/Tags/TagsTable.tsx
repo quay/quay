@@ -199,6 +199,7 @@ function TagsTableRow(props: RowProps) {
     props.repo,
     tag.name,
     config?.features?.IMAGE_PULL_STATS || false,
+    config?.features?.IMAGE_PULL_STATS_AUTO_REFRESH || false,
   );
 
   return (
@@ -580,7 +581,7 @@ export default function TagsTable(props: TableProps) {
   };
 
   // Calculate manifest tracks for visual grouping of tags sharing the same digest
-  const {tracks, getTrackEntry, getLineClass, trackCount} = useManifestTracks(
+  const {getTrackEntry, getLineClass, trackCount} = useManifestTracks(
     props.tags,
   );
 
@@ -641,7 +642,7 @@ export default function TagsTable(props: TableProps) {
         </Thead>
         {props.tags.map((tag: Tag, localIndex: number) => (
           <TagsTableRow
-            key={localIndex}
+            key={tag.name}
             org={props.org}
             repo={props.repo}
             tag={tag}
@@ -724,6 +725,7 @@ interface SubRowProps {
   config: {
     features?: {
       IMAGE_PULL_STATS?: boolean;
+      IMAGE_PULL_STATS_AUTO_REFRESH?: boolean;
       SECURITY_SCANNER?: boolean;
     };
   } | null;
