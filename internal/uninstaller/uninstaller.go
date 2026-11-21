@@ -111,6 +111,17 @@ func (u *Uninstaller) Run(ctx context.Context, cfg *Config) error {
 		return err
 	}
 
+	// ResolveDataDir guards against non-absolute paths and "/" but does not
+	// check whether the resolved directory is the user's home directory.
+	// Call validateDataDir before any service operations so that a dangerous
+	// path supplied via --data-dir (or auto-detected from the Quadlet) is
+	// rejected before anything is stopped or removed.
+	if cfg.Purge {
+		if err := validateDataDir(cfg.DataDir); err != nil {
+			return err
+		}
+	}
+
 	if err := u.systemd.Stop(ctx, serviceName); err != nil {
 		if errors.Is(err, system.ErrUnitNotFound) {
 			slog.Info("service not running, continuing")
