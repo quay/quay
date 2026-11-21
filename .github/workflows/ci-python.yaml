@@ -11,7 +11,7 @@ on:
 jobs:
   build:
     name: Format
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
 
     - name: Checkout
@@ -51,7 +51,7 @@ jobs:
 
   pre-commit-checks:
     name: Pre-commit checks
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     if: ${{ inputs.is-pr }}
     steps:
 
@@ -82,7 +82,7 @@ jobs:
 
   unit:
     name: Unit Test
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
 
     - name: Checkout
@@ -115,7 +115,7 @@ jobs:
 
   sqlite:
     name: SQLite Integration Test
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
 
     - name: Checkout
@@ -152,7 +152,7 @@ jobs:
 
   types:
     name: Types Test
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
 
     - name: Checkout
@@ -216,7 +216,7 @@ jobs:
 
   psql:
     name: PostgreSQL Integration Test
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
 
     - name: Checkout
@@ -249,7 +249,7 @@ jobs:
 
   oci:
     name: OCI Distribution Spec
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:16.4
