@@ -14,14 +14,13 @@ from app import OVERRIDE_CONFIG_DIRECTORY, app, mail
 from data import model
 from util.fips import login_fips_safe
 from util.jsontemplate import JSONTemplate, JSONTemplateParseException
+from util.security.ssrf import validate_external_registry_url
 from util.validation import validate_email
 from workers.queueworker import JobException
 
 logger = logging.getLogger(__name__)
 
 METHOD_TIMEOUT = app.config.get("NOTIFICATION_SEND_TIMEOUT", 10)  # Seconds
-HOSTNAME_BLACKLIST = ["localhost", "127.0.0.1"]
-HOSTNAME_BLACKLIST.extend(app.config.get("WEBHOOK_HOSTNAME_BLACKLIST", []))
 MAIL_DEFAULT_SENDER = app.config.get("MAIL_DEFAULT_SENDER", "admin@example.com")
 SSL_FILENAMES = ["ssl.cert", "ssl.key"]
 
@@ -45,6 +44,28 @@ def _ssl_cert():
         return cert_files if cert_exists else None
 
     return None
+
+
+def _validate_outbound_notification_url(url):
+    """
+    Validate a user-supplied notification callback URL against SSRF rules.
+
+    Uses the shared helper (DNS + private/metadata IP checks) already applied to
+    mirrors, proxy cache, and export-log callbacks. Also honors the legacy
+    WEBHOOK_HOSTNAME_BLACKLIST config as an extra deny list.
+    """
+    validate_external_registry_url(
+        url,
+        resolve_dns=True,
+        allowed_hosts=app.config.get("SSRF_ALLOWED_HOSTS", []),
+    )
+
+    hostname = (urlparse(url).hostname or "").lower()
+    extra_blocked = {
+        entry.lower() for entry in (app.config.get("WEBHOOK_HOSTNAME_BLACKLIST") or []) if entry
+    }
+    if hostname in extra_blocked:
+        raise ValueError(f"Hostname '{hostname}' is not allowed")
 
 
 class NotificationMethod(object):
@@ -234,11 +255,9 @@ class WebhookMethod(NotificationMethod):
         if not url:
             raise CannotValidateNotificationMethodException("Missing webhook URL")
 
-        parsed = urlparse(url)
-        if parsed.scheme != "https" and parsed.scheme != "http":
-            raise CannotValidateNotificationMethodException("Invalid webhook URL")
-
-        if parsed.hostname.lower() in HOSTNAME_BLACKLIST:
+        try:
+            _validate_outbound_notification_url(url)
+        except ValueError:
             raise CannotValidateNotificationMethodException("Invalid webhook URL")
 
         # If a template was specified, ensure it is a valid template.
@@ -256,14 +275,12 @@ class WebhookMethod(NotificationMethod):
         if not url:
             return
 
-        parsed = urlparse(url)
-        if parsed.scheme != "https" and parsed.scheme != "http":
+        # Re-validate at delivery time to catch DNS rebinding and legacy configs.
+        try:
+            _validate_outbound_notification_url(url)
+        except ValueError:
             logger.error("Invalid webhook URL: %s", url)
-            return
-
-        if parsed.hostname.lower() in HOSTNAME_BLACKLIST:
-            logger.error("Invalid webhook URL: %s", url)
-            return
+            raise NotificationMethodPerformException("Invalid webhook URL")
 
         payload = notification_data["event_data"]
         template = config_data.get("template")
@@ -278,12 +295,15 @@ class WebhookMethod(NotificationMethod):
         headers = {"Content-type": "application/json"}
 
         try:
+            # Do not follow redirects: a public URL can 302 to an internal address
+            # after SSRF validation. Matches export-log callback behavior.
             resp = requests.post(
                 url,
                 data=json.dumps(payload),
                 headers=headers,
                 cert=_ssl_cert(),
                 timeout=METHOD_TIMEOUT,
+                allow_redirects=False,
             )
             if resp.status_code // 100 != 2:
                 error_message = "%s response for webhook to url: %s" % (resp.status_code, url)
@@ -492,8 +512,14 @@ class SlackMethod(NotificationMethod):
         return "slack"
 
     def validate(self, namespace_name, repo_name, config_data):
-        if not config_data.get("url", ""):
+        url = config_data.get("url", "")
+        if not url:
             raise CannotValidateNotificationMethodException("Missing Slack Callback URL")
+
+        try:
+            _validate_outbound_notification_url(url)
+        except ValueError:
+            raise CannotValidateNotificationMethodException("Invalid Slack Callback URL")
 
     def format_for_slack(self, message):
         message = message.replace("\n", " ")
@@ -506,6 +532,12 @@ class SlackMethod(NotificationMethod):
         url = config_data.get("url", "")
         if not url:
             return
+
+        try:
+            _validate_outbound_notification_url(url)
+        except ValueError:
+            logger.error("Invalid Slack callback URL: %s", url)
+            raise NotificationMethodPerformException("Invalid Slack Callback URL")
 
         owner = model.user.get_user_or_org(notification_obj.repository.namespace_name)
         if not owner:
@@ -539,8 +571,14 @@ class SlackMethod(NotificationMethod):
         }
 
         try:
+            # Do not follow redirects: a public URL can 302 to an internal address
+            # after SSRF validation. Matches export-log callback behavior.
             resp = requests.post(
-                url, data=json.dumps(payload), headers=headers, timeout=METHOD_TIMEOUT
+                url,
+                data=json.dumps(payload),
+                headers=headers,
+                timeout=METHOD_TIMEOUT,
+                allow_redirects=False,
             )
             if resp.status_code // 100 != 2:
                 error_message = "%s response for Slack to url: %s" % (resp.status_code, url)
