@@ -24,7 +24,7 @@ jobs:
           ref: ${{ github.event.pull_request.base.ref }}
 
       - name: Apply area labels
-        uses: actions/labeler@v6
+        uses: actions/labeler@v7
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           configuration-path: .github/labeler.yml
