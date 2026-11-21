@@ -118,6 +118,16 @@ def test_invalid_unicode(app):
     assert result == ValidateResult(AuthKind.basic, missing=True)
 
 
+def test_invalid_unicode_does_not_log_credentials(app, caplog):
+    token = b"\xebOH"
+    header = "basic " + b64encode(token).decode("ascii")
+    validate_basic_auth(header)
+
+    for record in caplog.records:
+        assert header not in record.getMessage()
+        assert all(header != str(arg) for arg in (record.args or ()))
+
+
 def test_invalid_unicode_2(app):
     token = "“QUAY_FIXTURE_ONLY-4JPCOLIVMAY32Q3XGVPHC4CBF8SKII5FWNYMASOFDIVSXTC5I5NBU”".encode(
         "utf-8"
