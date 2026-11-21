@@ -91,7 +91,7 @@ runs:
   steps:
     - name: Set up Docker Buildx
       if: inputs.build-image == 'true'
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@v4
 
     - name: Build Quay image (with cache)
       if: inputs.build-image == 'true' && inputs.use-gha-cache == 'true'
