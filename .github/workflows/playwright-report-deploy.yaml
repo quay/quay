@@ -52,7 +52,7 @@ jobs:
         SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
 
     - name: Comment PR with report URL
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       with:
         script: |
           const reportUrl = '${{ steps.deploy.outputs.url }}';

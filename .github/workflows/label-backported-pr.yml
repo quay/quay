@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Label original PR as backported
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const prBody = context.payload.pull_request.body || '';

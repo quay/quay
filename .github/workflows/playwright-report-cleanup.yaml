@@ -23,7 +23,7 @@ jobs:
         SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
 
     - name: Update PR comment
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       with:
         script: |
           const prNumber = context.payload.pull_request.number;

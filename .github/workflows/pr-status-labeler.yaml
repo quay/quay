@@ -37,7 +37,7 @@ jobs:
           echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
 
       - name: Apply all status labels
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const prNumber = ${{ steps.pr.outputs.number }};
