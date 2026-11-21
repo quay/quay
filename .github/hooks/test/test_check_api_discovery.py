@@ -61,6 +61,41 @@ class TestAPIDiscoveryReminder(unittest.TestCase):
         self.assertIn("Example.get is missing @nickname", output)
         self.assertIn("1 reminder(s)", output)
 
+    def test_selected_files_only_contribute_to_reminder_count(self):
+        """Keep excluded findings out of both the output and the summary."""
+        source = """\
+            @resource("/v1/example")
+            class Example(ApiResource):
+                def get(self):
+                    pass
+
+                def post(self):
+                    pass
+            """
+        selected = self.write("selected.py", source)
+        self.write("excluded.py", source)
+        output = self.run_hook(selected)
+        self.assertEqual(output.count("WARNING endpoints/api/selected.py:"), 2)
+        self.assertNotIn("excluded.py", output)
+        self.assertIn("checked 1 file(s), 2 reminder(s)", output)
+
+    def test_github_annotation_escapes_properties_and_message(self):
+        """Special characters cannot corrupt workflow warning fields or data."""
+        helpers = runpy.run_path(str(HOOK))
+        output = io.StringIO()
+        path = self.root / "endpoints/api/a%,:b.py"
+        with patch.dict(os.environ, {"GITHUB_ACTIONS": "true"}):
+            with redirect_stdout(output):
+                count = helpers["warn"](
+                    path, 7, "message%,:\r\nnext", root=self.root, selected={path}
+                )
+        self.assertEqual(count, 1)
+        self.assertEqual(
+            output.getvalue(),
+            "::warning file=endpoints/api/a%25%2C%3Ab.py,line=7,"
+            "title=API discovery reminder::message%25,:%0D%0Anext\n",
+        )
+
     def test_valid_aliases_and_multi_route_nicknames(self):
         filename = self.write(
             "example.py",
