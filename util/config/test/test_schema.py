@@ -271,7 +271,7 @@ class TestNginxTimeoutSchema:
         schema = CONFIG_SCHEMA["properties"]["MANIFESTS_ENDPOINT_READ_TIMEOUT"]
         validate(value, schema)
 
-    @pytest.mark.parametrize("value", ["3600", "120", "60", "2000"])
+    @pytest.mark.parametrize("value", ["3600", "120", "60", "2000", "1", "300"])
     def test_blob_upload_timeout_accepts_valid_seconds(self, value):
         schema = CONFIG_SCHEMA["properties"]["BLOB_UPLOAD_CLIENT_BODY_TIMEOUT"]
         validate(value, schema)
@@ -286,7 +286,7 @@ class TestNginxTimeoutSchema:
         with pytest.raises(ValidationError):
             validate(value, schema)
 
-    @pytest.mark.parametrize("value", ["not-a-timeout", "abc", "3600s", "1h", "1.5", ""])
+    @pytest.mark.parametrize("value", ["not-a-timeout", "abc", "3600s", "1h", "1.5", "", "0"])
     def test_blob_upload_timeout_rejects_invalid_format(self, value):
         schema = CONFIG_SCHEMA["properties"]["BLOB_UPLOAD_CLIENT_BODY_TIMEOUT"]
         with pytest.raises(ValidationError):
@@ -307,7 +307,7 @@ class TestNginxTimeoutSchema:
         "field",
         ["BLOB_UPLOAD_LINGERING_TIME", "BLOB_UPLOAD_LINGERING_TIMEOUT"],
     )
-    @pytest.mark.parametrize("value", ["60", "30", "120"])
+    @pytest.mark.parametrize("value", ["60", "30", "120", "1", "300"])
     def test_lingering_time_accepts_valid_seconds(self, field, value):
         schema = CONFIG_SCHEMA["properties"][field]
         validate(value, schema)
@@ -316,7 +316,7 @@ class TestNginxTimeoutSchema:
         "field",
         ["BLOB_UPLOAD_LINGERING_TIME", "BLOB_UPLOAD_LINGERING_TIMEOUT"],
     )
-    @pytest.mark.parametrize("value", ["60s", "1m", "abc", ""])
+    @pytest.mark.parametrize("value", ["60s", "1m", "abc", "", "0"])
     def test_lingering_time_rejects_invalid_format(self, field, value):
         schema = CONFIG_SCHEMA["properties"][field]
         with pytest.raises(ValidationError):
