@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: Download PR data
-        uses: dawidd6/action-download-artifact@v8
+        uses: dawidd6/action-download-artifact@v28
         with:
           name: pr-data-*
           name_is_regexp: true

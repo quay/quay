@@ -20,7 +20,7 @@ jobs:
 
     steps:
     - name: Download Playwright report artifact
-      uses: dawidd6/action-download-artifact@v8
+      uses: dawidd6/action-download-artifact@v28
       with:
         name: playwright-report
         workflow: web-playwright-ci.yaml
@@ -28,7 +28,7 @@ jobs:
         path: ./playwright-report
 
     - name: Download PR number
-      uses: dawidd6/action-download-artifact@v8
+      uses: dawidd6/action-download-artifact@v28
       with:
         name: pr-info
         workflow: web-playwright-ci.yaml
