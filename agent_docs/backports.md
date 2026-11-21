@@ -135,7 +135,14 @@ Maintenance Support — port to it only if the change qualifies, per step 1.)
 - Picking from the previous branch reuses its adaptations. Firing an older
   branch from `master` skips them and manufactures conflicts.
 - After a `/jira backport`, read the bot's "The following backport issues
-  have been created" reply; an empty list means no clone was made.
+  have been created" reply; an empty list means no clone was made. After
+  confirming the clone was created, open the clone ticket in Jira and set
+  the **Release Note Type** field to "Release Note Not Required" (or add
+  release note text if the fix warrants customer-facing notes). Jira clone
+  tickets do not inherit release note fields from their parent, so every
+  bot-generated clone starts with Release Note Type blank — triggering an
+  `jira/invalid-bug` warning on the cherry-pick PR that persists to merge
+  if left unset.
 
 Bot-first is also a scheduling rule. A bot-authored PR can be approved by any
 approver; a hand-written one needs an approving review from someone who is not
