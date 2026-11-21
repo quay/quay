@@ -2,7 +2,7 @@
  * v2 registry tests for proxied organizations
  */
 
-import {test, expect, uniqueName} from '../../fixtures';
+import {test, expect, uniqueName, skipUnlessFeature} from '../../fixtures';
 import {TEST_USERS} from '../../global-setup';
 import {ApiClient} from '../../utils/api';
 import {getV2Token} from '../../utils/api/auth';
@@ -15,7 +15,17 @@ const REQUEST_PROXY = proxyOptionFromEnv();
 
 test.describe(
   'V2 registry tests for proxied organizations',
-  {tag: ['@api', '@v2', '@container', '@auth:Database']},
+  {
+    tag: [
+      '@api',
+      '@v2',
+      '@container',
+      '@auth:Database',
+      '@feature:PROXY_CACHE',
+    ],
+  },
+  // gunicorn-blobstream only runs when the proxy cache feature is turned on. The tag
+  // @feature:PROXY_CACHE skips the test otherwise.
   () => {
     // Tests share same state (orgName, repoName, manifestDigest) and must
     // run sequentially.
@@ -32,23 +42,28 @@ test.describe(
     let blobDigest: string;
     let blobSize: number;
 
-    test.beforeAll(async ({userContext, cachedContainerAvailable}) => {
-      // skip setup if registry tooling is unavailable
-      if (!cachedContainerAvailable) return;
+    test.beforeAll(
+      async ({userContext, cachedContainerAvailable, cachedQuayConfig}) => {
+        // @feature flag is applied per test so gate tests if the feature is not available
+        test.skip(...skipUnlessFeature(cachedQuayConfig, 'PROXY_CACHE'));
 
-      const api = new ApiClient(userContext.request);
-      orgName = uniqueName('proxycache');
+        // skip setup if registry tooling is unavailable
+        if (!cachedContainerAvailable) return;
 
-      // create organization
-      await api.createOrganization(orgName, `${orgName}@example.com`);
+        const api = new ApiClient(userContext.request);
+        orgName = uniqueName('proxycache');
 
-      // create proxy organization
-      await api.createProxyCacheConfig(orgName, {
-        upstream_registry: 'quay.io',
-        expiration_s: 3600,
-        insecure: false,
-      });
-    });
+        // create organization
+        await api.createOrganization(orgName, `${orgName}@example.com`);
+
+        // create proxy organization
+        await api.createProxyCacheConfig(orgName, {
+          upstream_registry: 'quay.io',
+          expiration_s: 3600,
+          insecure: false,
+        });
+      },
+    );
 
     // cleanup
     test.afterAll(async ({userContext, cachedContainerAvailable}) => {

@@ -1,6 +1,8 @@
+import json
 import os
 import re
 import shutil
+from pathlib import Path
 
 import jinja2
 import pytest
@@ -28,6 +30,9 @@ def render_server_base_conf(**kwargs):
         blob_upload_lingering_time=None,
         blob_upload_lingering_timeout=None,
         enable_alb_health_check=False,
+        secscan_enabled=True,
+        secscan_notifications_enabled=True,
+        proxy_cache_enabled=True,
     )
     defaults.update(kwargs)
     return template.render(**defaults)
@@ -35,6 +40,24 @@ def render_server_base_conf(**kwargs):
 
 def _sts_token_location(rendered):
     return re.search(r"location = /sts/token \{([^}]*)\}", rendered, re.DOTALL).group(1)
+
+
+def _secscan_location(rendered):
+    return re.search(r"location (?:\^~ )?/secscan/\s*\{[^}]*\}", rendered, re.DOTALL).group(0)
+
+
+def _upstream_proxy_location(rendered):
+    return re.search(r"location ~ \^/_upstream_proxy/[^{]*\{([^}]*)\}", rendered, re.DOTALL).group(
+        0
+    )
+
+
+def _secscan_notifications_location_present(rendered):
+    match = re.search(r"location = /secscan/notification \{([^}]*)\}", rendered, re.DOTALL)
+    if match:
+        return match.group(0)
+    else:
+        return None
 
 
 def test_sts_token_is_routed_to_web_app():
@@ -58,6 +81,56 @@ def test_sts_token_omits_nginx_rate_limits_when_disabled():
     location = _sts_token_location(rendered)
     assert "limit_req" not in location
     assert "@sts_rate_limited" not in rendered
+
+
+class TestSecscanLocationDirective:
+    def test_secscan_points_to_secscan_server_when_secscan_enabled_true(self):
+        """
+        Verifies that with default configuration secscan points to secscan_app_server.
+        """
+        rendered = render_server_base_conf()
+        match = _secscan_location(rendered)
+        assert match is not None
+        assert "proxy_pass http://secscan_app_server;" in match
+
+    def test_secscan_returns_404_when_secscan_enabled_false(self):
+        """
+        Verifies that when secscan is turned off, the endpoint points to web_app_server.
+        """
+        rendered = render_server_base_conf(secscan_enabled=False)
+        match = _secscan_location(rendered)
+        assert match is not None
+        assert "return 404;" in match
+        assert "proxy_pass" not in match
+
+    def test_secscan_notification_is_not_present_in_generated_config(self):
+        """
+        Verifies that /secscan/notification is not present in the config if secscan and
+        security notifications are enabled.
+        """
+        rendered = render_server_base_conf()
+        match = _secscan_notifications_location_present(rendered)
+        assert match is None
+
+    def test_sescan_notification_is_not_present_in_generated_config_if_secscan_is_disabled(self):
+        """
+        Verifies that /secscan/notification is not present in the config if secscan is disabled.
+        """
+        rendered = render_server_base_conf(secscan_enabled=False)
+        match = _secscan_notifications_location_present(rendered)
+        assert match is None
+
+    def test_secscan_notification_is_present_in_generated_config_if_notifications_are_disabled(
+        self,
+    ):
+        """
+        Verifies that /secscan/notification is present in the config if secscan is enabled, but
+        security notifications are disabled and that it returns a 404.
+        """
+        rendered = render_server_base_conf(secscan_notifications_enabled=False)
+        match = _secscan_notifications_location_present(rendered)
+        assert match is not None
+        assert "return 404;" in match
 
 
 class TestErrorPageDirective:
@@ -200,6 +273,31 @@ def render_hosted_http_base_conf(tmp_path, monkeypatch, config):
     return (tmp_path / "nginx/hosted-http-base.conf").read_text()
 
 
+def render_server_base_conf_through_nginx_conf_create(tmp_path, monkeypatch, config, env=None):
+    """
+    Similarly to render_server_base_conf, it creates the new server-base.conf file, but
+    utilizes a full nginx-create path to do so instead of manipulating the Jinja template directly.
+    """
+    nginx_path = os.path.join(tmp_path, "nginx")
+    os.mkdir(nginx_path)
+
+    shutil.copy(
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "../../nginx/server-base.conf.jnj",
+        ),
+        nginx_path,
+    )
+
+    monkeypatch.setattr(nginx_conf_create, "QUAYCONF_DIR", str(tmp_path))
+    monkeypatch.delenv("QUAY_OVERRIDE_CONFIG", raising=False)
+    for k, v in (env or {}).items():
+        monkeypatch.setenv(k, v)
+
+    nginx_conf_create.generate_server_config(config)
+    return Path(nginx_path, "server-base.conf").read_text(encoding="utf-8")
+
+
 def _listen_lines(rendered):
     return [line.strip() for line in rendered.splitlines() if line.strip().startswith("listen")]
 
@@ -234,3 +332,199 @@ class TestHostedHttpBaseListen:
             "listen 8080 default_server proxy_protocol;",
             "listen [::]:8080 default_server proxy_protocol;",
         ]
+
+
+class TestServerBaseConfCreation:
+    @pytest.mark.parametrize(
+        ("config", "env", "state"),
+        [
+            pytest.param(
+                {"FEATURE_SECURITY_SCANNER": True, "FEATURE_SECURITY_NOTIFICATIONS": True},
+                None,
+                "enabled",
+                id="scanner-and-notifications-on",
+            ),
+            pytest.param(
+                {"FEATURE_SECURITY_SCANNER": True, "FEATURE_SECURITY_NOTIFICATIONS": False},
+                None,
+                "notifications-blocked",
+                id="scanner-on-notifications-off",
+            ),
+            pytest.param(
+                {"FEATURE_SECURITY_SCANNER": False, "FEATURE_SECURITY_NOTIFICATIONS": True},
+                None,
+                "disabled",
+                id="scanner-off-notifications-on",
+            ),
+            pytest.param(
+                {},
+                None,
+                "disabled",
+                id="empty-config",
+            ),
+            pytest.param(
+                None,
+                None,
+                "disabled",
+                id="config-not-provided",
+            ),
+            pytest.param(
+                {
+                    "FEATURE_SECURITY_SCANNER": True,
+                    "FEATURE_SECURITY_NOTIFICATIONS": True,
+                    "ACCOUNT_RECOVERY_MODE": True,
+                },
+                None,
+                "disabled",
+                id="both-on-but-account-recovery-mode-set",
+            ),
+            pytest.param(
+                {},
+                {
+                    "QUAY_OVERRIDE_CONFIG": json.dumps({}),
+                },
+                "disabled",
+                id="empty-quay-override-provided",
+            ),
+            pytest.param(
+                {},
+                {
+                    "QUAY_OVERRIDE_CONFIG": json.dumps(
+                        {"FEATURE_SECURITY_SCANNER": True, "FEATURE_SECURITY_NOTIFICATIONS": True},
+                    ),
+                },
+                "enabled",
+                id="scanner-and-notifier-turned-on-through-override",
+            ),
+            pytest.param(
+                {},
+                {
+                    "QUAY_OVERRIDE_CONFIG": json.dumps(
+                        {"FEATURE_SECURITY_SCANNER": True, "FEATURE_SECURITY_NOTIFICATIONS": False},
+                    ),
+                },
+                "notifications-blocked",
+                id="scanner-on-notifications-off-via-quay-override",
+            ),
+            pytest.param(
+                {},
+                {
+                    "QUAY_OVERRIDE_CONFIG": "{this is not a valid json",
+                },
+                "enabled",
+                id="wrong-json-override",
+            ),
+            pytest.param(
+                {},
+                {
+                    "QUAY_OVERRIDE_CONFIG": json.dumps("{this is not a valid json"),
+                },
+                "enabled",
+                id="override-is-json-string-not-object",
+            ),
+        ],
+    )
+    def test_config_rendering(self, tmp_path, monkeypatch, config, env, state):
+        """
+        Verifies that the correct server-base.conf is created with provided parameters.
+        """
+        # the combination of secscan and secscan_notifications can yield three different states.
+        # based on the enabled workers, these states need to be verified against the
+        # generated configuration.
+        EXPECTED = {
+            "disabled": ("return 404;", False),
+            "notifications-blocked": ("proxy_pass http://secscan_app_server;", True),
+            "enabled": ("proxy_pass http://secscan_app_server;", False),
+        }
+
+        rendered = render_server_base_conf_through_nginx_conf_create(
+            tmp_path, monkeypatch, config, env
+        )
+        prefix_expected, notifications_blocked = EXPECTED[state]
+
+        exact = re.search(r"location = /secscan \{([^}]*)\}", rendered, re.DOTALL)
+        prefix = _secscan_location(rendered)
+        assert prefix_expected in prefix
+
+        if state == "disabled":
+            assert "proxy_pass" not in prefix
+            assert exact is not None and "return 404;" in exact.group(0)
+        else:
+            assert "proxy_pass" in prefix
+            assert "return 404;" not in prefix
+            assert exact is None
+
+        assert (
+            _secscan_notifications_location_present(rendered) is not None
+        ) == notifications_blocked
+        assert "{%" not in rendered and "{ %" not in rendered
+
+    @pytest.mark.parametrize(
+        ("config", "env", "expected"),
+        [
+            pytest.param(
+                {"FEATURE_PROXY_CACHE": True},
+                None,
+                True,
+                id="proxy-cache-enabled",
+            ),
+            pytest.param(
+                {"FEATURE_PROXY_CACHE": False},
+                None,
+                False,
+                id="proxy-cache-disabled",
+            ),
+            pytest.param(
+                {},
+                None,
+                False,
+                id="empty-config-and-no-overrides",
+            ),
+            pytest.param(
+                None,
+                None,
+                False,
+                id="no-config-provided-and-no-overrides",
+            ),
+            pytest.param(
+                {},
+                {
+                    "QUAY_OVERRIDE_CONFIG": json.dumps({"FEATURE_PROXY_CACHE": True}),
+                },
+                True,
+                id="proxy-cache-enabled-through-override",
+            ),
+            pytest.param(
+                {"FEATURE_PROXY_CACHE": True, "ACCOUNT_RECOVERY_MODE": True},
+                {},
+                False,
+                id="proxy-cache-enabled-account-recovery-mode-enabled",
+            ),
+            pytest.param(
+                {},
+                {"QUAY_OVERRIDE_CONFIG": "{this is not a valid json"},
+                True,
+                id="invalid-override-enables-proxy-cache",
+            ),
+        ],
+    )
+    def test_upstream_proxy_rendering(self, tmp_path, monkeypatch, config, env, expected):
+        """
+        Verifies that the _upstream_proxy endpoint is properly rendered based on
+        feature flags and command line overrides.
+        """
+        rendered = render_server_base_conf_through_nginx_conf_create(
+            tmp_path, monkeypatch, config, env
+        )
+        location = _upstream_proxy_location(rendered)
+
+        if expected:
+            assert "proxy_pass http://blobstream_app_server;" in location
+            assert "return 404;" not in location
+        else:
+            assert "proxy_pass http://blobstream_app_server;" not in location
+            assert "return 404;" in location
+
+        # we cannot have multiple _upstream_proxy definitions
+        num_locations = re.findall(r"location ~ \^/_upstream_proxy/", rendered)
+        assert len(num_locations) == 1

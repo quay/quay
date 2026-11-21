@@ -2026,9 +2026,11 @@ test.describe(
 
 test.describe(
   'Normal User - Security Scanner',
-  {tag: ['@api', '@auth:Database']},
+  {tag: ['@api', '@auth:Database', '@feature:SECURITY_SCANNER']},
   () => {
     test('can check security scanner backfill status', async ({userClient}) => {
+      // gunicorn-secscan only runs when the scanner is enabled; the
+      // @feature:SECURITY_SCANNER tag skips this test otherwise
       const r = await userClient.get('/secscan/_backfill_status');
       expect(r.status()).toBe(200);
     });
