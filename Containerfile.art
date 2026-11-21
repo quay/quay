@@ -230,8 +230,19 @@ COPY --from=build-python /opt/app-root/bin/dumb-init /usr/local/bin/dumb-init
 COPY --from=config-tool /opt/app-root/src/go/bin/config-tool /bin
 COPY --from=build-quaydir /quaydir $QUAYDIR
 
+# Standalone UI version is QUAY_VERSION, then this file, then the first
+# CHANGELOG.md heading. ART already passes the release as x/y/z for image
+# labels. Persist the same version so the UI matches the image when the
+# changelog heading still names the previous z-stream (PROJQUAY-14325).
+RUN if [ -n "$x_version" ] && [ -n "$y_version" ] && [ -n "$z_version" ]; then \
+      printf 'v%s.%s.%s\n' "$x_version" "$y_version" "$z_version" > "$QUAYDIR/QUAY_VERSION"; \
+    fi
+
 RUN set -ex \
   ; chgrp -R 0 "$QUAYCONF" && chmod -R g=u "$QUAYCONF" \
+  ; if [ -f "$QUAYDIR/QUAY_VERSION" ]; then \
+      chgrp 0 "$QUAYDIR/QUAY_VERSION" && chmod g=u "$QUAYDIR/QUAY_VERSION"; \
+    fi \
   ;
 
 # Strip setuid/setgid bits — with allowPrivilegeEscalation: false these are
