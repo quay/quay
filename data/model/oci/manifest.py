@@ -242,10 +242,19 @@ def _lookup_manifest(repository_id, manifest_digest, allow_dead=False, allow_hid
 
 
 def lookup_manifest_referrers(repository_id, manifest_digest, artifact_type=None):
+    # Match digest lookup visibility, including hidden tags and live index children.
+    alive_manifests = filter_to_alive_tags(
+        Tag.select(Tag.manifest).where(Tag.repository == repository_id), allow_hidden=True
+    )
+    alive_children = ManifestChild.select(ManifestChild.child_manifest).where(
+        ManifestChild.repository == repository_id,
+        ManifestChild.manifest << alive_manifests,
+    )
     query = (
         Manifest.select()
         .where(Manifest.repository == repository_id)
         .where(Manifest.subject == manifest_digest)
+        .where((Manifest.id << alive_manifests) | (Manifest.id << alive_children))
     )
     if artifact_type is not None:
         query = query.where(Manifest.artifact_type == artifact_type)

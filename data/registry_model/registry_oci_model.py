@@ -543,24 +543,52 @@ class OCIModel(RegistryDataInterface):
     def _invalidate_referrers_cache_for_manifest(
         self, repository_ref, manifest_interface_instance, model_cache
     ):
-        if model_cache is None or manifest_interface_instance.subject is None:
+        if model_cache is None:
             return
 
-        subject_digest = manifest_interface_instance.subject.digest
-        unfiltered_key = cache_key.for_manifest_referrers(
-            repository_ref._db_id, subject_digest, model_cache.cache_config
-        )
-        model_cache.invalidate(unfiltered_key)
-
-        artifact_type = manifest_interface_instance.artifact_type
-        if artifact_type is not None:
-            filtered_key = cache_key.for_manifest_referrers(
-                repository_ref._db_id,
-                subject_digest,
-                model_cache.cache_config,
-                artifact_type=artifact_type,
+        affected = set()
+        if manifest_interface_instance.subject is not None:
+            affected.add(
+                (
+                    manifest_interface_instance.subject.digest,
+                    manifest_interface_instance.artifact_type,
+                )
             )
-            model_cache.invalidate(filtered_key)
+
+        if manifest_interface_instance.is_manifest_list:
+            # A live index also determines visibility of its untagged referrers.
+            child_ids = (
+                ManifestChild.select(ManifestChild.child_manifest)
+                .join(database.Manifest, on=(ManifestChild.manifest == database.Manifest.id))
+                .where(
+                    database.Manifest.repository == repository_ref._db_id,
+                    database.Manifest.digest == manifest_interface_instance.digest,
+                )
+            )
+            children = database.Manifest.select(
+                database.Manifest.subject, database.Manifest.artifact_type
+            ).where(
+                database.Manifest.repository == repository_ref._db_id,
+                database.Manifest.id << child_ids,
+                database.Manifest.subject.is_null(False),
+            )
+            affected.update((child.subject, child.artifact_type) for child in children)
+
+        for subject_digest, artifact_type in affected:
+            model_cache.invalidate(
+                cache_key.for_manifest_referrers(
+                    repository_ref._db_id, subject_digest, model_cache.cache_config
+                )
+            )
+            if artifact_type is not None:
+                model_cache.invalidate(
+                    cache_key.for_manifest_referrers(
+                        repository_ref._db_id,
+                        subject_digest,
+                        model_cache.cache_config,
+                        artifact_type=artifact_type,
+                    )
+                )
 
     def create_manifest_and_retarget_tag(
         self,
@@ -779,7 +807,31 @@ class OCIModel(RegistryDataInterface):
         Returns the tags (ShallowTag) deleted. Raises ImmutableTagException if any tag is immutable.
         """
         with db_disallow_replica_use():
-            deleted_tags = oci.tag.delete_tags_for_manifest(manifest._db_id)
+            deleted_tags = oci.tag.delete_tags_for_manifest(manifest._db_id, allow_hidden=True)
+
+            if deleted_tags:
+                if manifest.is_manifest_list:
+                    # Children can lose their only live reference with this index.
+                    children = (
+                        database.Manifest.select(database.Manifest.digest)
+                        .join(
+                            ManifestChild,
+                            on=(ManifestChild.child_manifest == database.Manifest.id),
+                        )
+                        .where(
+                            ManifestChild.manifest == manifest._db_id,
+                            database.Manifest.repository == manifest.repository.id,
+                        )
+                    )
+                    for child in children:
+                        model_cache.invalidate(
+                            cache_key.for_repository_manifest(
+                                manifest.repository.id, child.digest, model_cache.cache_config
+                            )
+                        )
+                self._invalidate_referrers_cache_for_manifest(
+                    manifest.repository, manifest.get_parsed_manifest(), model_cache
+                )
 
             manifest_cache_key = cache_key.for_repository_manifest(
                 manifest.repository.id, manifest.digest, model_cache.cache_config
