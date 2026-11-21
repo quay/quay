@@ -32,6 +32,7 @@ from data.model import (
     user,
 )
 from data.model.notification import delete_tag_notifications_for_tag
+from data.text import match_like
 from image.docker.schema1 import (
     DOCKER_SCHEMA1_CONTENT_TYPES,
     DockerSchema1Manifest,
@@ -262,7 +263,7 @@ def list_repository_tag_history(
         if filter_tag_name is not None:
             operation, value = filter_tag_name.split(":", 1)
             if operation == "like":
-                query = query.where(Tag.name.contains(value))
+                query = query.where(match_like(Tag.name, value))
             elif operation == "eq":
                 query = query.where(Tag.name == value)
     except ValueError:
