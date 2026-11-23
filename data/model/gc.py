@@ -34,7 +34,7 @@ from data.database import (
     UploadedBlob,
     db_for_update,
 )
-from data.model import _basequery, blob, config, db_transaction, storage
+from data.model import blob, config, db_transaction, storage
 from data.model.notification import delete_tag_notifications_for_tag
 from data.model.oci import tag as oci_tag
 from data.model.quota import QuotaOperation, update_quota
@@ -124,6 +124,11 @@ def purge_repository(repo, force=False):
     # Delete pull statistics for the repository.
     _chunk_delete_all(repo, TagPullStatistics, force=force)
     _chunk_delete_all(repo, ManifestPullStatistics, force=force)
+
+    # Delete all queue items related to the repository (relevant for proxied organizaitons).
+    # Run only if the proxy cache feature is turned on, else skip.
+    if features.PROXY_CACHE:
+        _purge_proxy_cache_queued_jobs(repo)
 
     # Delete any marker rows for the repository.
     DeletedRepository.delete().where(DeletedRepository.repository == repo).execute()
@@ -357,6 +362,18 @@ def _run_garbage_collection(context):
 def _purge_oci_manifest(manifest, context):
     context.add_manifest_id(manifest.id)
     gc_table_rows_deleted.labels(table="Manifest").inc()
+
+
+def _purge_proxy_cache_queued_jobs(repo):
+    """
+    Purges all proxy cache queued jobs for the repository in question.
+    """
+    from app import proxy_cache_blob_queue
+
+    num_rows = proxy_cache_blob_queue.delete_namespaced_items(
+        repo.namespace_user.username, str(repo.id)
+    )
+    logger.debug("Deleted %d stale jobs from queueitem for repo %d", num_rows, repo.id)
 
 
 def _purge_oci_tag(tag, context, allow_non_expired=False):

@@ -1,6 +1,7 @@
 import hashlib
 import json
 import logging
+import os
 import random
 import string
 from contextlib import contextmanager
@@ -12,7 +13,8 @@ from freezegun import freeze_time
 from mock import patch
 from playhouse.test_utils import assert_query_count
 
-from app import docker_v2_signing_key, model_cache, storage
+from app import app as realapp
+from app import docker_v2_signing_key, model_cache, proxy_cache_blob_queue, storage
 from data import database, model
 from data.database import (
     ExternalNotificationMethod,
@@ -26,6 +28,7 @@ from data.database import (
     ManifestLabel,
     ManifestPullStatistics,
     MediaType,
+    Repository,
     Tag,
     TagNotificationSuccess,
     TagPullStatistics,
@@ -1239,7 +1242,7 @@ def test_gc_purge_oci_tag_guard_skips_immutable(default_tag_policy, initialized_
             assert result is not False
 
 
-def _get_digest(content_bytes):
+def _get_digest(content_bytes: bytes):
     """
     Helper function that creates blobs with proper digests
     """
@@ -1971,3 +1974,126 @@ def test_garbage_collect_storage_acquires_blob_delete_lock_with_gc_role(
         f"Expected every BLOB_DELETE holder to start with 'repositorygcworker:', "
         f"got: {holder_ids_seen}"
     )
+
+
+def test_purge_repository_removes_proxy_cache_queue_items(initialized_db):
+    """
+    Verifies that purging of repository content removes jobs
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+    digests = [sha256_digest(os.urandom(1024)) for _ in range(3)]
+
+    # enqueue all for proxying under the repository
+    for digest in digests:
+        queue_id = proxy_cache_blob_queue.put(
+            [
+                "devtable",
+                str(repo.id),
+                digest,
+            ],
+            json.dumps(
+                {
+                    "digest": digest,
+                    "repo_id": repo.id,
+                    "username": "devtable",
+                    "namespace": "devtable",
+                }
+            ),
+        )
+        assert queue_id is not None
+
+    # purge the repository from database
+    assert model.gc.purge_repository(repo, force=True)
+
+    # assert that all jobs are returning False
+    for digest in digests:
+        assert not proxy_cache_blob_queue.alive(["devtable", str(repo.id), digest])
+
+
+def test_purge_repository_keeps_other_repos_queue_items(initialized_db):
+    """
+    Verifies that only jobs part of a specific repository are deleted, while others
+    are left where they are.
+    """
+    repo1 = model.repository.create_repository("devtable", "repo1", None)
+    repo2 = model.repository.create_repository("devtable", "repo2", None)
+
+    # enqueue 3 blobs for proxying under first and 1 job under the 2nd repo
+    digests = [sha256_digest(os.urandom(1024)) for _ in range(3)]
+    for digest in digests:
+        assert proxy_cache_blob_queue.put(
+            [
+                "devtable",
+                str(repo1.id),
+                digest,
+            ],
+            json.dumps(
+                {
+                    "digest": digest,
+                    "repo_id": repo1.id,
+                    "username": "devtable",
+                    "namespace": "devtable",
+                }
+            ),
+        )
+
+    repo2_digest = sha256_digest(os.urandom(1024))
+    assert proxy_cache_blob_queue.put(
+        ["devtable", str(repo2.id), repo2_digest],
+        json.dumps(
+            {
+                "digest": repo2_digest,
+                "repo_id": repo2.id,
+                "username": "devtable",
+                "namespace": "devtable",
+            }
+        ),
+    )
+
+    # purge repository 1 from the db
+    assert model.gc.purge_repository(repo1, force=True)
+
+    # verify that all jobs for repo1 were deleted and that the job for repo2 still exists
+    for digest in digests:
+        assert not proxy_cache_blob_queue.alive(["devtable", str(repo1.id), digest])
+
+    assert proxy_cache_blob_queue.alive(["devtable", str(repo2.id), repo2_digest])
+
+
+def test_purge_repository_without_queue_items_succeeds(initialized_db):
+    """
+    Verifies that purging of a repository with no proxy cache items does not raise
+    an exception.
+    """
+    repo = model.repository.create_repository("devtable", "repo", None)
+
+    # empty repository, GCing must succeed
+    assert model.gc.purge_repository(repo, force=True)
+
+    # explicitly verify that the repo doesn't exist
+    assert not Repository.select().where(Repository.id == repo.id).exists()
+
+
+def test_job_purge_doesnt_happen_if_feature_flag_is_turned_off(initialized_db):
+    repo = model.repository.create_repository("devtable", "repo", None)
+
+    with patch("features.PROXY_CACHE", False):
+        with patch("data.model.gc._purge_proxy_cache_queued_jobs") as mock_purge:
+            model.gc.purge_repository(repo, force=True)
+
+        # assert that the _purge_proxy_cache_queued_jobs is not called
+        mock_purge.assert_not_called()
+
+
+def test_job_purge_does_happen_if_feature_flag_is_turned_on(initialized_db):
+    """
+    Same as the previous test, except it tests the positive outcome.
+    """
+    repo = model.repository.create_repository("devtable", "repo", None)
+
+    with patch("features.PROXY_CACHE", True):
+        with patch("data.model.gc._purge_proxy_cache_queued_jobs") as mock_purge:
+            model.gc.purge_repository(repo, force=True)
+
+        # assert that the _purge_proxy_cache_queued_jobs is not called
+        mock_purge.assert_called_once()
