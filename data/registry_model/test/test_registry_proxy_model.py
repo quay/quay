@@ -729,11 +729,13 @@ class TestRegistryProxyModelCreateManifestAndRetargetTag:
         self, create_repo
     ):
         """
-        Test that _create_manifest_with_temp_tag calls oci.manifest.lookup_manifest
-        with allow_hidden=True, allow_dead=True when looking up child manifests.
+        Test the lookups _create_manifest_with_temp_tag makes through
+        oci.manifest.lookup_manifest:
 
-        This test specifically covers the change on line 586 where
-        oci.manifest.lookup_manifest is called with these specific parameters.
+        - the manifest itself is looked up first (allow_dead=True), so a manifest that a
+          concurrent request already created is reused instead of inserted again;
+        - each child manifest of a manifest list is then looked up with
+          allow_hidden=True, allow_dead=True.
         """
         repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
         input_manifest = parse_manifest_from_bytes(
@@ -780,16 +782,25 @@ class TestRegistryProxyModelCreateManifestAndRetargetTag:
                             )
                         )
 
-                    # Check that lookup_manifest was called the expected number of times
-                    assert mock_lookup.call_count == len(expected_calls)
+                    # Check that lookup_manifest was called the expected number of times.
+                    # we add +1 here due to an extra lookup right at the beginning of the
+                    # function call.
+                    assert mock_lookup.call_count == len(expected_calls) + 1
 
-                    # Verify each call had the correct parameters
-                    for i, call in enumerate(mock_lookup.call_args_list):
+                    # Verify each child call had the correct parameter (starting at
+                    # index 1, index 0 is the lookup of the manifest list itself)
+                    for i, call in enumerate(mock_lookup.call_args_list[1:]):
                         args, kwargs = call
                         assert args[0] == repo_ref.id  # repository_id
                         assert args[1] == expected_calls[i][0][1]  # child.digest
                         assert kwargs["allow_hidden"] is True
                         assert kwargs["allow_dead"] is True
+
+                    # verify that the lookup at index 0 had correct parameters
+                    # (lookup of the manifest list)
+                    first_args, first_kwargs = mock_lookup.call_args_list[0]
+                    assert first_args == (repo_ref.id, input_manifest.digest)
+                    assert first_kwargs == {"allow_dead": True}
 
     @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
     def test_connect_existing_manifest_to_manifest_list(self, create_repo):

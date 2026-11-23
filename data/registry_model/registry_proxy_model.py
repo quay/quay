@@ -689,9 +689,18 @@ class ProxyModel(OCIModel):
         Raises QuotaExceededException if there are not enough tags to prune.
         """
         self._check_image_upload_possible_or_prune(repository_ref, manifest)
-        with db_disallow_replica_use():
-            with db_transaction():
-                db_manifest = oci.manifest.create_manifest(repository_ref.id, manifest)
+
+        # when multiple requests come in for the same manifest, all threads will try to do it
+        # at the same time but only one will succeed. to stop it, we first check if the manifest
+        # is available and only if it's not, we try to insert it.
+        db_manifest = oci.manifest.lookup_manifest(
+            repository_ref.id, manifest.digest, allow_dead=True
+        )
+
+        if db_manifest is None:
+            with db_disallow_replica_use():
+                with db_transaction():
+                    db_manifest = oci.manifest.create_manifest(repository_ref.id, manifest)
 
         created_blobs = []  # Track ManifestBlob rows created in this attempt
         try:
