@@ -20,4 +20,3 @@ COPY --from=build  /opt/app-root/server.js /opt/app-root/server.js
 EXPOSE 9000
 
 CMD ["node", "server.js"]
-
