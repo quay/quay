@@ -281,7 +281,7 @@ class WebhookMethod(NotificationMethod):
         if not url:
             return
 
-        # Re-validate at delivery time to catch DNS rebinding and legacy configs.
+        # Re-validate at delivery time for legacy configs and records changed since creation.
         try:
             _validate_outbound_notification_url(url)
         except ValueError:
