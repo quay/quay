@@ -401,14 +401,13 @@ def validate_external_registry_url(
         raise ValueError("External registry URL is required")
 
     # urlparse and requests disagree on backslash in the authority (e.g.
-    # http://169.254.169.254\x.public.sslip.io/...). Reject explicitly, then
-    # validate the URL requests will actually fetch so hostname checks match
-    # the connection target.
+    # http://169.254.169.254\x.public.sslip.io/...). Reject before parsing so
+    # diagnostics stay consistent, then validate the URL requests will fetch.
     if "\\" in url:
         raise ValueError("URLs must not contain backslashes")
 
+    # Early parse for scheme/host diagnostics before requests preparation.
     try:
-        url = Request("GET", url).prepare().url
         parsed = urlparse(url)
     except Exception:
         raise ValueError("Invalid URL format")
@@ -422,6 +421,16 @@ def validate_external_registry_url(
         raise ValueError("URLs with embedded credentials are not allowed")
 
     # Extract hostname
+    hostname = parsed.hostname
+    if not hostname:
+        raise ValueError("URL must include a hostname")
+
+    try:
+        url = Request("GET", url).prepare().url
+        parsed = urlparse(url)
+    except Exception:
+        raise ValueError("Invalid URL format")
+
     hostname = parsed.hostname
     if not hostname:
         raise ValueError("URL must include a hostname")
