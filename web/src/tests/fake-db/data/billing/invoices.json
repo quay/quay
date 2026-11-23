@@ -1,0 +1,44 @@
+[
+  {
+    "id": "inv_1",
+    "date": 1789171200,
+    "period_start": 1786492800,
+    "period_end": 1789171200,
+    "paid": true,
+    "amount_due": 12500,
+    "next_payment_attempt": null,
+    "attempted": true,
+    "closed": true,
+    "total": 12500,
+    "plan": "bus-medium-2018",
+    "download_url": "/invoices/inv_1.pdf"
+  },
+  {
+    "id": "inv_2",
+    "date": 1786492800,
+    "period_start": 1783814400,
+    "period_end": 1786492800,
+    "paid": true,
+    "amount_due": 12500,
+    "next_payment_attempt": null,
+    "attempted": true,
+    "closed": true,
+    "total": 12500,
+    "plan": "bus-medium-2018",
+    "download_url": "/invoices/inv_2.pdf"
+  },
+  {
+    "id": "inv_3",
+    "date": 1783814400,
+    "period_start": 1781222400,
+    "period_end": 1783814400,
+    "paid": false,
+    "amount_due": 12500,
+    "next_payment_attempt": null,
+    "attempted": true,
+    "closed": false,
+    "total": 12500,
+    "plan": "bus-medium-2018",
+    "download_url": "/invoices/inv_3.pdf"
+  }
+]

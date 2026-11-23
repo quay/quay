@@ -41,6 +41,8 @@ export enum NavigationPath {
   home = '/',
   overviewList = '/overview',
   organizationsList = '/organization',
+  createOrganization = '/organizations/new',
+  fakeCheckout = '/fake-checkout',
   repositoriesList = '/repository',
   search = '/search',
 
@@ -71,6 +73,14 @@ export enum NavigationPath {
 
   // Team Member
   teamMember = '/organization/:organizationName/teams/:teamName',
+
+  // Invoice list
+  invoiceList = '/organization/:organizationName/invoices',
+
+  subscriptionList = '/organization/:organizationName/subscriptions',
+
+  // Plan selection page
+  organizationPlans = '/organization/:organizationName/plans',
 
   // Build trigger setup
   setupBuildTrigger = '/repository/:organizationName/:repositoryName/trigger/:triggerUuid',
@@ -154,7 +164,7 @@ function domainRoute(currentRoute, definedRoute) {
    ***/
   return (
     currentRoute.replace(
-      /\/(overview|organization|repository|signin)(?=\/|$).*/,
+      /\/(overview|organization|organizations|repository|signin)(?=\/|$).*/,
       '',
     ) + definedRoute
   );

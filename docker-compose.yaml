@@ -209,7 +209,7 @@ services:
       - ".:/quay-registry"
       - "./local-dev/stack:/quay-registry/conf/stack"
     ports:
-      - "8080:8080"
+      - "8082:8080"
       - "8443:8443"
       - "50051:50051"
     environment:

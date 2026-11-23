@@ -116,6 +116,7 @@ WORKDIR /opt/app-root
 COPY --chown=1001:0 web/package.json web/pnpm-lock.yaml web/.npmrc  ./
 RUN pnpm install --frozen-lockfile
 COPY --chown=1001:0 web .
+ENV NODE_OPTIONS=--no-experimental-webstorage
 RUN pnpm run --silent build
 
 # Pushgateway grabs pushgateway.

@@ -25,6 +25,9 @@ import {UIProvider} from 'src/contexts/UIContext';
 const OrganizationsList = lazy(
   () => import('./OrganizationsList/OrganizationsList'),
 );
+const CreateOrganization = lazy(
+  () => import('./OrganizationsList/CreateOrganization'),
+);
 const Organization = lazy(
   () => import('./OrganizationsList/Organization/Organization'),
 );
@@ -41,6 +44,10 @@ const ManageMembersList = lazy(
 const OverviewList = lazy(() => import('./OverviewList/OverviewList'));
 
 const NavigationRoutes = [
+  {
+    path: NavigationPath.createOrganization,
+    Component: <CreateOrganization />,
+  },
   {
     path: NavigationPath.overviewList,
     Component: <OverviewList />,

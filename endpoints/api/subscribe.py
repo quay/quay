@@ -49,6 +49,7 @@ def subscription_view(stripe_subscription, used_repos):
         "usedPrivateRepos": used_repos,
         "trialStart": stripe_subscription.trial_start,
         "trialEnd": stripe_subscription.trial_end,
+        "status": stripe_subscription.status,
     }
 
     return view
