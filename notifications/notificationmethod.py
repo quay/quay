@@ -14,7 +14,10 @@ from app import OVERRIDE_CONFIG_DIRECTORY, app, mail
 from data import model
 from util.fips import login_fips_safe
 from util.jsontemplate import JSONTemplate, JSONTemplateParseException
-from util.security.ssrf import get_environment_proxy_config, validate_external_registry_url
+from util.security.ssrf import (
+    get_environment_proxy_config,
+    validate_external_registry_url,
+)
 from util.validation import validate_email
 from workers.queueworker import JobException
 
