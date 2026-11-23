@@ -4,7 +4,8 @@ ARG quay_app_api_url=http://localhost:8080
 ENV REACT_QUAY_APP_API_URL=${quay_app_api_url}
 
 WORKDIR /opt/app-root
-COPY package.json patches/ ./
+COPY package.json ./
+COPY patches/ ./patches/
 RUN npm install
 
 COPY . .
