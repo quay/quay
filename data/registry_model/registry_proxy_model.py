@@ -723,18 +723,31 @@ class ProxyModel(OCIModel):
                         return wrapped_manifest, tag
 
                     manifests_to_connect = []
+                    children = []
                     for child in manifest.child_manifests(content_retriever=None):
                         m = oci.manifest.lookup_manifest(
                             repository_ref.id, child.digest, allow_hidden=True, allow_dead=True
                         )
                         if m is None:
                             m = oci.manifest.create_manifest(repository_ref.id, child)
-                        manifests_to_connect.append(m)
+                        children.append(m)
+
+                        # the manifest list might already have been created and its children linked
+                        # by a concurrent request, so only insert the links that are missing:
+                        if (
+                            not ManifestChild.select()
+                            .where(
+                                ManifestChild.manifest == db_manifest.id,
+                                ManifestChild.child_manifest == m.id,
+                            )
+                            .exists()
+                        ):
+                            manifests_to_connect.append(m)
 
                     oci.manifest.connect_manifests(
                         manifests_to_connect, db_manifest, repository_ref.id
                     )
-                    for child_manifest in manifests_to_connect:
+                    for child_manifest in children:
                         oci.tag.create_temporary_tag_if_necessary(child_manifest, expiration)
 
                     return wrapped_manifest, tag

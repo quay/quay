@@ -727,6 +727,33 @@ class TestRegistryProxyModelCreateManifestAndRetargetTag:
         ), "sub manifest tags must have temp tag name, not parent manifest name"
 
     @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_create_manifest_with_temp_tags_reuses_complete_manifest_list(self, create_repo):
+        """
+        Verifies that subsequent calls already reuse inserted manifest lists and their chidlren
+        without inserting new links.
+        """
+        repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
+        input_manifest = parse_manifest_from_bytes(
+            Bytes.for_string_or_unicode(testdata.UBI8_LATEST["manifest"]),
+            testdata.UBI8_LATEST["content-type"],
+            sparse_manifest_support=True,
+        )
+
+        proxy_model = ProxyModel(self.orgname, self.upstream_repository, self.user)
+
+        # a competing request has already comitted the manifest list and its links
+        first, _ = proxy_model._create_manifest_with_temp_tag(repo_ref, input_manifest)
+        links_before = ManifestChild.select().where(ManifestChild.manifest == first.id).count()
+        assert links_before > 0
+
+        # 2nd request: reuse the comitted links (no conflict, no duplicate links)
+        second, _ = proxy_model._create_manifest_with_temp_tag(repo_ref, input_manifest)
+        assert second.id == first.id
+        assert (
+            ManifestChild.select().where(ManifestChild.manifest == first.id).count() == links_before
+        )
+
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
     def test_lookup_manifest_with_allow_hidden_and_allow_dead_in_create_manifest_with_temp_tag(
         self, create_repo
     ):
