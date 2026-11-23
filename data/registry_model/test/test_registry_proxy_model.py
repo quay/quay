@@ -262,28 +262,30 @@ class TestLookUpRepositoryWithRepoCreationVisibilityFlag:
             if the manifest exists.
             """
             try:
-                with patch.object(self.proxy_model._proxy, "manifest_exists"):
-                    barrier.wait()
-                    with db.connection_context():
-                        results.append(
-                            self.proxy_model.lookup_repository(
-                                self.orgname, name, manifest_ref=self.tag
-                            )
+                barrier.wait()
+                with db.connection_context():
+                    results.append(
+                        self.proxy_model.lookup_repository(
+                            self.orgname, name, manifest_ref=self.tag
                         )
+                    )
             except Exception as exc:
                 errors.append(exc)
 
         try:
-            threads = [threading.Thread(target=worker) for _ in range(n)]
-            [t.start() for t in threads]
-            [t.join(timeout=15) for t in threads]
-            assert not errors, errors
-            assert (
-                len(results) == n
-            ), f"Expected {n} results, got {len(results)}. A thread may have deadlocked."
-            assert all(r is not None for r in results)
-            assert len({r.id for r in results}) == 1
-            assert Repository.select().where(Repository.name == name).count() == 1
+            with patch.object(self.proxy_model._proxy, "manifest_exists"):
+                threads = [threading.Thread(target=worker) for _ in range(n)]
+                [t.start() for t in threads]
+                [t.join(timeout=15) for t in threads]
+
+                assert not errors, errors
+                assert (
+                    len(results) == n
+                ), f"Expected {n} results, got {len(results)}. A thread may have deadlocked."
+
+                assert all(r is not None for r in results)
+                assert len({r.id for r in results}) == 1
+                assert Repository.select().where(Repository.name == name).count() == 1
         finally:
             # purge repository
             org = user.get_namespace_user(self.orgname)
