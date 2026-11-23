@@ -256,6 +256,54 @@ test.describe(
         expect(limit.type).toBe('Warning');
       },
     );
+
+    test(
+      'only one Reject quota limit allowed on create and update',
+      {tag: ['@superuser', '@PROJQUAY-14332']},
+      async ({superuserApi, adminClient}) => {
+        const org = await superuserApi.organization('onereject');
+        const quota = await superuserApi.quota(org.name, 1024000000);
+        const limitsUrl = `/api/v1/organization/${org.name}/quota/${quota.quotaId}/limit`;
+        const message = "Only one quota limit of type 'Reject' allowed.";
+
+        await superuserApi.raw.createQuotaLimit(
+          org.name,
+          quota.quotaId,
+          'Reject',
+          90,
+        );
+        await superuserApi.raw.createQuotaLimit(
+          org.name,
+          quota.quotaId,
+          'Warning',
+          70,
+        );
+
+        const createResp = await adminClient.post(limitsUrl, {
+          type: 'Reject',
+          threshold_percent: 80,
+        });
+        expect(createResp.status()).toBe(400);
+        expect((await createResp.json()).error_message).toBe(message);
+
+        const before = await (await adminClient.get(limitsUrl)).json();
+        const warning = before.find(
+          (l: {type: string}) => l.type === 'Warning',
+        );
+        const updateResp = await adminClient.put(`${limitsUrl}/${warning.id}`, {
+          type: 'Reject',
+          threshold_percent: 75,
+        });
+        expect(updateResp.status()).toBe(400);
+        expect((await updateResp.json()).error_message).toBe(message);
+
+        const after = await (await adminClient.get(limitsUrl)).json();
+        expect(after).toHaveLength(2);
+        expect(after.find((l: {id: number}) => l.id === warning.id)).toEqual(
+          warning,
+        );
+      },
+    );
   },
 );
 

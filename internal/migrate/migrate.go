@@ -132,6 +132,11 @@ func (m *Migrator) runSQLiteMigration(ctx context.Context) error {
 	if err := m.migrateAndInstall(ctx); err != nil {
 		return err
 	}
+	if m.sourceStopped && !m.SkipInstall {
+		if err := m.disableSourceServices(ctx, quayAppUnit, quayRedisUnit, quayPodUnit); err != nil {
+			return fmt.Errorf("new registry is running, but %w", err)
+		}
+	}
 
 	if m.Cleanup {
 		if err := m.cleanup(ctx); err != nil {

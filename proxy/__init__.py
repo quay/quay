@@ -24,8 +24,9 @@ REGISTRY_URLS = {"docker.io": "registry-1.docker.io"}
 
 
 class UpstreamRegistryError(Exception):
-    def __init__(self, detail, status_code=None):
+    def __init__(self, detail, status_code=None, headers=None):
         self.status_code = status_code
+        self.headers = headers or {}
         msg = (
             "the requested image may not exist in the upstream registry, or the configured "
             f"Quay organization credentials have insufficient rights to access it ({detail})"
@@ -116,13 +117,19 @@ class Proxy:
         resp = self.head(url, headers=headers, allow_redirects=True)
         return resp.headers.get("docker-content-digest")
 
-    def get_blob(self, digest: str):
+    def get_blob(self, digest: str, additional_headers: dict | None = None):
         url = f"{self.base_url}/v2/{self._repo}/blobs/{digest}"
+
+        headers = {
+            "Accept-Encoding": "identity",
+        }
+
+        if additional_headers:
+            headers.update(additional_headers)
+
         resp = self.get(
             url,
-            headers={
-                "Accept-Encoding": "identity",
-            },
+            headers=headers,
             allow_redirects=True,
             stream=True,
             timeout=(5, 120),
@@ -167,7 +174,9 @@ class Proxy:
         if not resp.ok:
             if resp.status_code in (401, 403):
                 raise UpstreamAuthError(resp.status_code, status_code=resp.status_code)
-            raise UpstreamRegistryError(resp.status_code, status_code=resp.status_code)
+            raise UpstreamRegistryError(
+                resp.status_code, status_code=resp.status_code, headers=resp.headers
+            )
         return resp
 
     def _safe_request(self, request_func, *args, **kwargs):

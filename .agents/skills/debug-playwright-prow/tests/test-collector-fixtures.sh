@@ -131,6 +131,16 @@ if [ "$url" = "$BUCKET_URL" ]; then
   exit 0
 fi
 
+# --- Any other bucket refuses anonymous reads (403), as
+# gs/test-platform-results does.
+if [[ "$url" == https://storage.googleapis.com/* && "$url" != "$BUCKET_URL"/* ]]; then
+  if [ "$have_w" = "true" ]; then
+    printf '403'
+    exit 0
+  fi
+  exit 22
+fi
+
 # --- Object HEAD/GET, backed by a single fixture file. A sibling
 # "$file.http_code" overrides the HEAD status (e.g. "403", "500") so a
 # fixture can force classify_object_head's head_failed path without the
@@ -220,6 +230,12 @@ EOF
   mkdir -p "$jaeger_dir"
   printf '{"data":[]}' >"$jaeger_dir/traces.json"
 
+  local mailpit_dir="$root/$GCS_BASE_REL/artifacts/quay-deploy-mailpit"
+  mkdir -p "$mailpit_dir/artifacts"
+  printf 'Mailpit API reachable (HTTP 200)\n' >"$mailpit_dir/build-log.txt"
+  printf '{"passed":true,"result":"SUCCESS"}' >"$mailpit_dir/finished.json"
+  printf 'https://mailpit.example/api/v1' >"$mailpit_dir/artifacts/mailpit_api"
+
   run_collector "$root"
   artifacts_dir="$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.artifacts_dir')"
 
@@ -230,6 +246,10 @@ EOF
     assert_eq "quay-app-1_quay-app.log" "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.container_log_files[0]')" "container_log_files" &&
     assert_eq "true" "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.has_jaeger_traces')" "has_jaeger_traces" &&
     assert_eq "traces.json" "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.jaeger_trace_files[0]')" "jaeger_trace_files" &&
+    assert_eq "downloaded downloaded downloaded" \
+      "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '[.mailpit.build_log, .mailpit.finished, .mailpit.api_url] | map(.status) | join(" ")')" "mailpit records" &&
+    assert_eq "https://mailpit.example/api/v1" \
+      "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.mailpit.api_url.local_path' | xargs cat)" "mailpit_api downloaded" &&
     assert_eq "${REPO_ROOT}/tmp" "$(dirname "$artifacts_dir")" "artifacts_dir lives under repo tmp/" &&
     [ -d "$artifacts_dir" ]
 }
@@ -259,7 +279,9 @@ EOF
     assert_eq "https://storage.googleapis.com/${BUCKET}/${GCS_BASE_REL}/artifacts/quay-test-e2e" \
       "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.artifact_base_url')" "artifact_base_url (flat)" &&
     assert_eq "true" "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.has_build_log')" "has_build_log (flat step-local log)" &&
-    assert_eq "true" "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.has_container_logs')" "has_container_logs (flat siblings still resolve)"
+    assert_eq "true" "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.has_container_logs')" "has_container_logs (flat siblings still resolve)" &&
+    assert_eq "unavailable null" \
+      "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.mailpit.finished | "\(.status) \(.local_path)"')" "mailpit step absent"
 }
 
 # --- T3: nested workflow/step discovery, surviving a non-matching candidate ---
@@ -280,13 +302,18 @@ test_nested_workflow_discovery_survives_unrelated() {
   cat >"$step_dir/results.json" <<'EOF'
 {"config":{"workers":1},"suites":[{"specs":[]}],"stats":{"expected":1,"unexpected":0,"flaky":0,"skipped":0,"duration":100,"startTime":"2026-01-01T00:00:00.000Z"},"errors":[]}
 EOF
+  local mailpit_dir="$root/$GCS_BASE_REL/artifacts/e2e/quay-deploy-mailpit"
+  mkdir -p "$mailpit_dir"
+  printf 'not json' >"$mailpit_dir/finished.json"
 
   run_collector "$root"
   artifacts_dir="$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.artifacts_dir')"
 
   assert_eq "0" "$COLLECTOR_RC" "exit code" &&
     assert_eq "https://storage.googleapis.com/${BUCKET}/${GCS_BASE_REL}/artifacts/e2e/quay-test-playwright/artifacts" \
-      "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.artifact_base_url')" "discovers nested quay-test-playwright step"
+      "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.artifact_base_url')" "discovers nested quay-test-playwright step" &&
+    assert_eq "unavailable null" \
+      "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.mailpit.finished | "\(.status) \(.local_path)"')" "invalid mailpit finished.json"
 }
 
 # --- T4: actual_workers project value / root fallback / both missing ---
@@ -801,6 +828,104 @@ EOF
       *"skipping builder-diagnostics key with unexpected name: sub/evil.txt"*) : ;;
       *)
         echo "  expected the unsafe-name skip warning, got: $COLLECTOR_STDERR" >&2
+        return 1
+        ;;
+    esac
+}
+
+# --- a Prow URL naming the private bucket (403 to anonymous reads) falls
+# back to the bucket the public prowjob.json status.url names ---
+test_private_bucket_falls_back_to_public() {
+  local root artifacts_dir
+  local BUCKET="test-platform-results-public"
+  local PROW_URL="https://prow.ci.openshift.org/view/gs/test-platform-results/${JOB_PATH}/${BUILD_ID}"
+  root="$(new_fixture_root)"
+  trap '[ -n "${artifacts_dir:-}" ] && rm -rf "$artifacts_dir"' RETURN
+  write_prowjob "$root" "{\"status\":{\"state\":\"success\",\"url\":\"https://prow.ci.openshift.org/view/gs/${BUCKET}/${GCS_BASE_REL}\"}}"
+
+  local step_dir="$root/$GCS_BASE_REL/artifacts/quay-test-e2e/artifacts"
+  mkdir -p "$step_dir"
+  cat >"$step_dir/results.json" <<'EOF'
+{"config":{"workers":1},"suites":[{"specs":[]}],"stats":{"expected":1,"unexpected":0,"flaky":0,"skipped":0,"duration":100,"startTime":"2026-01-01T00:00:00.000Z"},"errors":[]}
+EOF
+  printf 'top-level log\n' >"$root/$GCS_BASE_REL/build-log.txt"
+
+  run_collector "$root"
+  artifacts_dir="$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.artifacts_dir')"
+
+  assert_eq "0" "$COLLECTOR_RC" "exit code" &&
+    assert_eq "https://storage.googleapis.com/${BUCKET}/${GCS_BASE_REL}/artifacts/quay-test-e2e/artifacts" \
+      "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.artifact_base_url')" "artifact_base_url uses the public bucket" &&
+    assert_eq "https://prow.ci.openshift.org/view/gs/${BUCKET}/${GCS_BASE_REL}" \
+      "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.prow_url')" "prow_url uses the public bucket" &&
+    assert_eq "downloaded" "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.top_level_build_log.status')" "top-level build log fetched" &&
+    case "$COLLECTOR_STDERR" in
+      *"Bucket: gs/${BUCKET} (gs/test-platform-results not readable anonymously; named by prowjob.json status.url)"*) : ;;
+      *)
+        echo "  expected the bucket fallback line, got: $COLLECTOR_STDERR" >&2
+        return 1
+        ;;
+    esac
+}
+
+# --- a status.url naming the same unreadable bucket still falls back to
+# the public bucket ---
+test_status_url_naming_private_bucket_falls_back_to_public() {
+  local root artifacts_dir
+  local BUCKET="test-platform-results-public"
+  local PROW_URL="https://prow.ci.openshift.org/view/gs/test-platform-results/${JOB_PATH}/${BUILD_ID}"
+  root="$(new_fixture_root)"
+  trap '[ -n "${artifacts_dir:-}" ] && rm -rf "$artifacts_dir"' RETURN
+  write_prowjob "$root" "{\"status\":{\"state\":\"success\",\"url\":\"${PROW_URL}\"}}"
+
+  local step_dir="$root/$GCS_BASE_REL/artifacts/quay-test-e2e/artifacts"
+  mkdir -p "$step_dir"
+  cat >"$step_dir/results.json" <<'EOF'
+{"config":{"workers":1},"suites":[{"specs":[]}],"stats":{"expected":1,"unexpected":0,"flaky":0,"skipped":0,"duration":100,"startTime":"2026-01-01T00:00:00.000Z"},"errors":[]}
+EOF
+
+  run_collector "$root"
+  artifacts_dir="$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.artifacts_dir')"
+
+  assert_eq "0" "$COLLECTOR_RC" "exit code" &&
+    assert_eq "https://prow.ci.openshift.org/view/gs/${BUCKET}/${GCS_BASE_REL}" \
+      "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.prow_url')" "prow_url uses the public bucket" &&
+    case "$COLLECTOR_STDERR" in
+      *"Bucket: gs/${BUCKET} (gs/test-platform-results not readable anonymously; default public bucket)"*) : ;;
+      *)
+        echo "  expected the default public bucket line, got: $COLLECTOR_STDERR" >&2
+        return 1
+        ;;
+    esac
+}
+
+# --- a public-bucket URL whose HEAD probe fails transiently keeps the public
+# bucket when the status.url bucket it names is not readable ---
+test_public_bucket_head_failure_keeps_public() {
+  local root artifacts_dir
+  local BUCKET="test-platform-results-public"
+  local PROW_URL="https://prow.ci.openshift.org/view/gs/${BUCKET}/${JOB_PATH}/${BUILD_ID}"
+  root="$(new_fixture_root)"
+  trap '[ -n "${artifacts_dir:-}" ] && rm -rf "$artifacts_dir"' RETURN
+  write_prowjob "$root" "{\"status\":{\"state\":\"success\",\"url\":\"https://prow.ci.openshift.org/view/gs/test-platform-results/${GCS_BASE_REL}\"}}"
+  printf '503' >"$root/$GCS_BASE_REL/prowjob.json.http_code"
+
+  local step_dir="$root/$GCS_BASE_REL/artifacts/quay-test-e2e/artifacts"
+  mkdir -p "$step_dir"
+  cat >"$step_dir/results.json" <<'EOF'
+{"config":{"workers":1},"suites":[{"specs":[]}],"stats":{"expected":1,"unexpected":0,"flaky":0,"skipped":0,"duration":100,"startTime":"2026-01-01T00:00:00.000Z"},"errors":[]}
+EOF
+
+  run_collector "$root"
+  artifacts_dir="$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.artifacts_dir')"
+
+  assert_eq "0" "$COLLECTOR_RC" "exit code" &&
+    assert_eq "https://prow.ci.openshift.org/view/gs/${BUCKET}/${GCS_BASE_REL}" \
+      "$(printf '%s' "$COLLECTOR_STDOUT" | jq -r '.prow_url')" "prow_url keeps the public bucket" &&
+    case "$COLLECTOR_STDERR" in
+      *"Bucket: gs/${BUCKET} (gs/${BUCKET} not readable anonymously; default public bucket)"*) : ;;
+      *)
+        echo "  expected the default public bucket line, got: $COLLECTOR_STDERR" >&2
         return 1
         ;;
     esac

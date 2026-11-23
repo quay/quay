@@ -202,6 +202,42 @@ test.describe('OAuth Applications', {tag: ['@organization']}, () => {
     },
   );
 
+  test(
+    'search resets pagination to page 1',
+    {tag: ['@PROJQUAY-14330']},
+    async ({authenticatedPage: page, api}) => {
+      const org = await api.organization('oauthpg');
+      await Promise.all(
+        Array.from({length: 21}, () => api.oauthApplication(org.name, 'pgapp')),
+      );
+
+      await page.goto(`/organization/${org.name}?tab=OAuthApplications`);
+      const tabPanel = page.getByRole('tabpanel', {name: 'OAuth Applications'});
+      const pagination = tabPanel
+        .locator('.pf-v6-c-pagination__total-items')
+        .first();
+      await expect(pagination).toHaveText('1 - 20 of 21', {timeout: 15000});
+
+      const appNameCells = tabPanel
+        .getByTestId('oauth-applications-table')
+        .getByRole('gridcell', {name: /^pgapp-/});
+      const page1AppName = (await appNameCells.first().textContent()).trim();
+
+      await tabPanel
+        .getByRole('button', {name: 'Go to next page'})
+        .first()
+        .click();
+      await expect(pagination).toHaveText('21 - 21 of 21');
+
+      await tabPanel
+        .getByTestId('default-permissions-search')
+        .fill(page1AppName);
+
+      await expect(pagination).toHaveText('1 - 1 of 1');
+      await expect(appNameCells).toHaveText([page1AppName]);
+    },
+  );
+
   test('bulk select and delete apps with the same name', async ({
     authenticatedPage: page,
     api,

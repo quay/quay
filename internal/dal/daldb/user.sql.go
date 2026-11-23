@@ -10,6 +10,20 @@ import (
 	"database/sql"
 )
 
+const addTeamMember = `-- name: AddTeamMember :exec
+INSERT INTO teammember (user_id, team_id) VALUES (?1, ?2)
+`
+
+type AddTeamMemberParams struct {
+	UserID int64 `json:"user_id"`
+	TeamID int64 `json:"team_id"`
+}
+
+func (q *Queries) AddTeamMember(ctx context.Context, arg AddTeamMemberParams) error {
+	_, err := q.db.ExecContext(ctx, addTeamMember, arg.UserID, arg.TeamID)
+	return err
+}
+
 const countUsers = `-- name: CountUsers :one
 SELECT count(*) FROM "user" WHERE organization = 0 AND robot = 0
 `
@@ -43,6 +57,38 @@ func (q *Queries) CreateAdminUser(ctx context.Context, arg CreateAdminUserParams
 		arg.PasswordHash,
 		arg.Email,
 	)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
+const createNamespaceOrganization = `-- name: CreateNamespaceOrganization :one
+INSERT INTO "user" (username, email, verified, organization, robot,
+  invoice_email, invalid_login_attempts, last_invalid_login,
+  removed_tag_expiration_s, enabled)
+VALUES (?1, ?1 || '@namespace.local', 1, 1, 0, 0, 0, datetime('now'), 1209600, 1)
+ON CONFLICT (username) DO NOTHING
+RETURNING id
+`
+
+// Creates a namespace as an organization; returns no row when it exists.
+func (q *Queries) CreateNamespaceOrganization(ctx context.Context, username string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, createNamespaceOrganization, username)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
+const createOwnersTeam = `-- name: CreateOwnersTeam :one
+INSERT INTO team (name, organization_id, role_id, description)
+SELECT 'owners', ?1, id, ''
+FROM teamrole
+WHERE name = 'admin'
+RETURNING id
+`
+
+func (q *Queries) CreateOwnersTeam(ctx context.Context, organizationID int64) (int64, error) {
+	row := q.db.QueryRowContext(ctx, createOwnersTeam, organizationID)
 	var id int64
 	err := row.Scan(&id)
 	return id, err

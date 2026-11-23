@@ -635,7 +635,7 @@ test.describe('V2 Invalid Bearer Token', {tag: ['@api', '@v2']}, () => {
 // ============================================================================
 
 test.describe('V2 Auth POST', {tag: ['@api', '@v2']}, () => {
-  test('POST /v2/auth returns token or method-not-allowed', async ({
+  test('POST /v2/auth is not allowed; token auth is GET only', async ({
     request,
     cachedQuayConfig,
   }) => {
@@ -652,10 +652,11 @@ test.describe('V2 Auth POST', {tag: ['@api', '@v2']}, () => {
         )}`,
       },
     });
-    expect([200, 405]).toContain(resp.status());
-    if (resp.status() === 200) {
-      const body = await resp.json();
-      expect(body.token).toBeTruthy();
-    }
+    expect(resp.status()).toBe(405);
+    const allow = (resp.headers()['allow'] ?? '')
+      .split(',')
+      .map((m) => m.trim());
+    expect(allow).toContain('GET');
+    expect(allow).not.toContain('POST');
   });
 });

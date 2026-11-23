@@ -389,7 +389,7 @@ func (ac *accessController) authorizeMissingRepositoryAccess(req *http.Request, 
 		if !ok {
 			return fmt.Errorf("%w: invalid repository name %q", errRepositoryAccessDenied, item.Name)
 		}
-		allowed, err := ac.authorizer.CanCreateRepository(req.Context(), principal, namespace)
+		allowed, err := ac.authorizer.CanCreateRepositoryOnPush(req.Context(), principal, namespace)
 		if err != nil {
 			return err
 		}

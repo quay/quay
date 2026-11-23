@@ -1,5 +1,12 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": [
+    "MintMaker (Konflux Renovate) config for quay/quay.",
+    "Each update type is grouped into one PR per base branch and runs once a week, on its own day, inside a 02:00-08:59 UTC window. MintMaker runs every few hours, so a window holds two runs: the first opens the PR, the second can merge it once CI has passed.",
+    "Automerge is on, but master and the redhat-* branches require the all-green check and one code-owner approval, so a PR merges only after review.",
+    "Vulnerability fixes ignore the weekly schedule, the grouping and the PR limits (Renovate vulnerabilityAlerts defaults: schedule [], groupName null, prConcurrentLimit 0), so CVE PRs stay immediate.",
+    "Do not set branchConcurrentLimit. Renovate counts existing branches across every base branch, so a small limit stops all new branches, including vulnerability fixes. MintMaker sets it to 0 and its docs advise against changing it."
+  ],
   "vulnerabilityAlerts": {
     "enabled": true
   },
@@ -8,14 +15,126 @@
   "extends": [
     "github>konflux-ci/mintmaker-presets:cve-automerge-all"
   ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update the ART runtime base and public RPM lock context from the same UBI tag",
+      "managerFilePatterns": ["/^(Containerfile\\.art|rpms\\.in\\.yaml)$/"],
+      "matchStrings": [
+        "(?:registry\\.redhat\\.io|registry\\.access\\.redhat\\.com)/ubi9/ubi-minimal:(?<currentValue>9\\.[0-9]+(?:-[0-9]+)?)"
+      ],
+      "depNameTemplate": "registry.access.redhat.com/ubi9/ubi-minimal",
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "redhat"
+    }
+  ],
   "gitIgnoredAuthors": ["github-actions[bot]@users.noreply.github.com"],
+  "baseBranchPatterns": [
+    "master",
+    "redhat-3.9",
+    "redhat-3.10",
+    "redhat-3.12",
+    "redhat-3.14",
+    "redhat-3.15",
+    "redhat-3.16",
+    "redhat-3.17",
+    "redhat-3.18",
+    "redhat-3.19",
+    "/^redhat-5\\.\\d+$/"
+  ],
+  "prConcurrentLimit": 4,
+  "prHourlyLimit": 1,
   "postUpdateOptions": ["gomodTidy"],
+  "timezone": "Etc/UTC",
+  "updateNotScheduled": false,
+  "rpm-lockfile": {
+    "lockFileMaintenance": {
+      "description": "RPM lockfile refreshes follow the rpm-lockfile weekly window below. MintMaker's global lockFileMaintenance schedule is applied after packageRules, so it has to be set here.",
+      "schedule": ["* 2-8 * * 6"]
+    }
+  },
   "packageRules": [
     {
       "description": "Disable major version bumps for non-tekton managers",
       "matchUpdateTypes": ["major"],
       "matchManagers": ["npm", "pip_requirements", "gomod"],
       "enabled": false
+    },
+    {
+      "description": "npm: one grouped PR per base branch, Monday 02:00-08:59 UTC. A separate groupName per manager keeps a PR left unmerged from one day from absorbing the next day's updates; group:all would put every manager in one branch.",
+      "matchManagers": ["npm"],
+      "groupName": "npm dependencies",
+      "groupSlug": "npm",
+      "schedule": ["* 2-8 * * 1"],
+      "automerge": true
+    },
+    {
+      "description": "Python: one grouped PR per base branch, Tuesday 02:00-08:59 UTC.",
+      "matchManagers": ["pip_requirements"],
+      "groupName": "Python dependencies",
+      "groupSlug": "python",
+      "schedule": ["* 2-8 * * 2"],
+      "automerge": true
+    },
+    {
+      "description": "Go: one grouped PR per base branch (go.mod and config-tool/go.mod), Wednesday 02:00-08:59 UTC.",
+      "matchManagers": ["gomod"],
+      "groupName": "Go dependencies",
+      "groupSlug": "go",
+      "schedule": ["* 2-8 * * 3"],
+      "automerge": true
+    },
+    {
+      "description": "Docker: one grouped PR per base branch for base image updates, Thursday 02:00-08:59 UTC.",
+      "matchManagers": ["dockerfile"],
+      "groupName": "Docker base images",
+      "groupSlug": "docker",
+      "schedule": ["* 2-8 * * 4"],
+      "automerge": true
+    },
+    {
+      "description": "Do not apply the ART runtime manager to master's standalone RPM lock context",
+      "matchManagers": ["custom.regex"],
+      "matchBaseBranches": ["master"],
+      "matchPackageNames": ["registry.access.redhat.com/ubi9/ubi-minimal"],
+      "enabled": false
+    },
+    {
+      "description": "Let the custom manager synchronize the pinned ART runtime base on release branches",
+      "matchManagers": ["dockerfile"],
+      "matchBaseBranches": ["/^redhat-/"],
+      "matchFileNames": ["Containerfile.art"],
+      "matchPackageNames": ["registry.redhat.io/ubi9/ubi-minimal"],
+      "enabled": false
+    },
+    {
+      "description": "Update the ART runtime base and RPM lock context together, regenerate the lockfile, and follow the Thursday Docker schedule",
+      "matchManagers": ["custom.regex"],
+      "matchBaseBranches": ["/^redhat-/"],
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["registry.access.redhat.com/ubi9/ubi-minimal"],
+      "versioning": "redhat",
+      "groupName": "Quay UBI runtime base image",
+      "groupSlug": "quay-ubi-runtime",
+      "schedule": ["* 2-8 * * 4"],
+      "automerge": true,
+      "postUpgradeTasks": {
+        "commands": ["rpm-lockfile-prototype rpms.in.yaml"],
+        "fileFilters": ["rpms.lock.yaml"],
+        "executionMode": "branch"
+      }
+    },
+    {
+      "description": "Tekton: Friday 02:00-08:59 UTC. No groupName here: MintMaker's global config already groups the tekton-catalog references into one PR per base branch.",
+      "matchManagers": ["tekton"],
+      "schedule": ["* 2-8 * * 5"],
+      "automerge": true
+    },
+    {
+      "description": "RPM lockfile: Saturday 02:00-08:59 UTC (see rpm-lockfile.lockFileMaintenance above). A lockfile refresh is already one PR per base branch.",
+      "matchManagers": ["rpm-lockfile"],
+      "schedule": ["* 2-8 * * 6"],
+      "automerge": true
     }
   ],
   "semanticCommits": "disabled",

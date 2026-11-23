@@ -18,7 +18,7 @@ import boto3
 import pytest
 import requests
 from freezegun import freeze_time
-from moto import mock_s3
+from moto import mock_aws
 
 from storage import RadosGWStorage, StorageContext
 from storage.cloud import _CHUNKS_KEY
@@ -90,7 +90,7 @@ def custom_endpoints(monkeypatch):
 
 @pytest.fixture(scope="function", params=[True, False], ids=["server_side", "client_side"])
 def storage_engine(request):
-    with mock_s3():
+    with mock_aws():
         _create_bucket(_CUSTOM_ENDPOINTS[0])
         engine = _engine(server_side_assembly=request.param)
         assert engine._connect_kwargs["endpoint_url"] == _CUSTOM_ENDPOINTS[0]
@@ -304,7 +304,7 @@ def test_large_chunks_with_ragged_edge(storage_engine):
     ],
 )
 def test_presigned_download_url_uses_custom_endpoint(endpoint_index, hostname, port, is_secure):
-    with mock_s3():
+    with mock_aws():
         endpoint = _CUSTOM_ENDPOINTS[endpoint_index]
         _create_bucket(endpoint)
         engine = _engine(hostname=hostname, port=port, is_secure=is_secure)
@@ -339,7 +339,7 @@ def test_presigned_upload_url_without_cors(storage_engine):
 
 
 def test_presigned_url_sigv4():
-    with mock_s3():
+    with mock_aws():
         _create_bucket(_CUSTOM_ENDPOINTS[0])
         engine = _engine(signature_version="s3v4")
         engine.put_content(_TEST_PATH, _TEST_CONTENT)

@@ -14,7 +14,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
           cache: true
@@ -40,7 +40,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
           cache: false
@@ -62,7 +62,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
           cache: true
@@ -88,7 +88,7 @@ jobs:
           cache-dependency-path: requirements.txt
 
       - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
           cache: true
@@ -133,7 +133,7 @@ jobs:
           path: dist-spec
 
       - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: dist-spec/conformance/go.mod
           cache: false
@@ -456,10 +456,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y skopeo
 
+      # Temporary pin: ocp/latest (OCP 5.0.1) ships no oc-mirror.tar.gz. Return to
+      # latest, or bump the stream, once a newer stream publishes it.
       - name: Install oc-mirror
         run: |
           curl -fsSL -o /tmp/oc-mirror.tar.gz \
-            https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/latest/oc-mirror.tar.gz
+            https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable-4.22/oc-mirror.tar.gz
           sudo tar xzf /tmp/oc-mirror.tar.gz -C /usr/local/bin oc-mirror
           sudo chmod 755 /usr/local/bin/oc-mirror
           oc-mirror version
@@ -691,10 +693,12 @@ jobs:
           echo '{"auths":{"localhost:8443":{"auth":"'$(echo -n "admin:$PASSWORD" | base64)'"}}}' \
             > "$HOME/.docker/config.json"
 
+      # Temporary pin: ocp/latest (OCP 5.0.1) ships no oc-mirror.tar.gz. Return to
+      # latest, or bump the stream, once a newer stream publishes it.
       - name: Install oc-mirror
         run: |
           curl -fsSL -o /tmp/oc-mirror.tar.gz \
-            https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/latest/oc-mirror.tar.gz
+            https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable-4.22/oc-mirror.tar.gz
           sudo tar xzf /tmp/oc-mirror.tar.gz -C /usr/local/bin oc-mirror
           sudo chmod 755 /usr/local/bin/oc-mirror
           oc-mirror version

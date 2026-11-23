@@ -16,6 +16,11 @@ import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {ITeams} from 'src/hooks/UseTeams';
 
 export default function TeamsViewToolbar(props: TeamsViewToolbarProps) {
+  const handleSearchChange = (searchState) => {
+    props.setSearch(searchState);
+    props.setPage(1);
+  };
+
   return (
     <Toolbar>
       <ToolbarContent>
@@ -29,13 +34,13 @@ export default function TeamsViewToolbar(props: TeamsViewToolbarProps) {
         <SearchDropdown
           items={props.searchOptions}
           searchState={props.search}
-          setSearchState={props.setSearch}
+          setSearchState={handleSearchChange}
         />
         <Flex className="pf-v6-u-mr-md">
           <FlexItem>
             <SearchInput
               searchState={props.search}
-              onChange={props.setSearch}
+              onChange={handleSearchChange}
               id="teams-view-search"
             />
           </FlexItem>

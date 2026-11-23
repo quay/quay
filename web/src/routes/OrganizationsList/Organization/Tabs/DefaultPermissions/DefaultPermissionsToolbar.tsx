@@ -21,6 +21,11 @@ import {OrganizationDrawerContentType} from 'src/routes/OrganizationsList/Organi
 export default function DefaultPermissionsToolbar(
   props: DefaultPermissionsToolbarProps,
 ) {
+  const handleSearchChange = (searchState) => {
+    props.setSearch(searchState);
+    props.setPage(1);
+  };
+
   return (
     <>
       <Toolbar>
@@ -36,13 +41,13 @@ export default function DefaultPermissionsToolbar(
           <SearchDropdown
             items={props.searchOptions}
             searchState={props.search}
-            setSearchState={props.setSearch}
+            setSearchState={handleSearchChange}
           />
           <Flex className="pf-v6-u-mr-md">
             <FlexItem>
               <SearchInput
                 searchState={props.search}
-                onChange={props.setSearch}
+                onChange={handleSearchChange}
                 id="default-permissions-search"
               />
             </FlexItem>

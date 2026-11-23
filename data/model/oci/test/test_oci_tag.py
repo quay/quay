@@ -356,6 +356,22 @@ def test_list_repository_tag_history_with_history(initialized_db):
     assert len(results) == 0
 
 
+def test_list_repository_tag_history_like_filter_is_literal(initialized_db):
+    repo = create_repository("devtable", "newrepo", None)
+    manifest, _ = create_manifest_for_testing(repo)
+    retarget_tag("release_1", manifest.id)
+    retarget_tag("releaseX1", manifest.id)
+
+    def names(filter_tag_name):
+        results, _ = list_repository_tag_history(repo, 1, 100, filter_tag_name=filter_tag_name)
+        return {tag.name for tag in results}
+
+    assert names("like:release_1") == {"release_1"}
+    assert names("like:RELEASE_1") == {"release_1"}
+    assert names("like:release") == {"release_1", "releaseX1"}
+    assert names("like:%") == set()
+
+
 def test_list_repository_tag_history_all_tags(initialized_db):
     for tag in Tag.select():
         repo = tag.repository
