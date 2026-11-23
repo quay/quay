@@ -14,6 +14,7 @@ from socket import getaddrinfo as _getaddrinfo
 from typing import List, Mapping, Optional
 from urllib.parse import urlparse, urlsplit
 
+from requests import Request
 from requests.utils import should_bypass_proxies
 
 logger = logging.getLogger(__name__)
@@ -399,8 +400,15 @@ def validate_external_registry_url(
     if not url:
         raise ValueError("External registry URL is required")
 
-    # Parse the URL
+    # urlparse and requests disagree on backslash in the authority (e.g.
+    # http://169.254.169.254\x.public.sslip.io/...). Reject explicitly, then
+    # validate the URL requests will actually fetch so hostname checks match
+    # the connection target.
+    if "\\" in url:
+        raise ValueError("URLs must not contain backslashes")
+
     try:
+        url = Request("GET", url).prepare().url
         parsed = urlparse(url)
     except Exception:
         raise ValueError("Invalid URL format")

@@ -108,6 +108,10 @@ def test_validate_email(method_config, error_message, initialized_db):
         ({"url": "http://169.254.169.254/latest/meta-data/"}, "Invalid webhook URL"),
         ({"url": "http://host.containers.internal:9999/ssrf"}, "Invalid webhook URL"),
         ({"url": "http://user:pass@example.com/"}, "Invalid webhook URL"),
+        (
+            {"url": r"http://169.254.169.254\x.93.184.216.34.sslip.io/latest/meta-data/"},
+            "Invalid webhook URL",
+        ),
     ],
 )
 def test_validate_webhook(method_config, error_message, initialized_db):

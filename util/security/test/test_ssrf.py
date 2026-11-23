@@ -86,6 +86,21 @@ class TestValidateExternalRegistryUrl:
         with pytest.raises(ValueError, match="credentials"):
             validate_external_registry_url("https://user@registry.example.com")
 
+    # ---- Backslash authority (urlparse vs requests disagreement) ----
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            r"http://169.254.169.254\x.93.184.216.34.sslip.io/latest/meta-data/",
+            r"http://169.254.169.254\@evil.example.com/",
+            r"https://example.com\foo",
+        ],
+    )
+    def test_backslash_in_authority_rejected(self, url):
+        """requests connects to the pre-backslash host; urlparse may not."""
+        with pytest.raises(ValueError, match="backslash"):
+            validate_external_registry_url(url)
+
     # ---- Missing hostname ----
 
     def test_url_without_hostname_rejected(self):
