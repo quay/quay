@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from data.database import Notification
-from data.model.namespacequota import notify_organization_admins
+from data.model.namespacequota import get_quota_for_view, notify_organization_admins
 from data.model.notification import (
     create_notification,
     notification_exists_with_metadata,
@@ -224,3 +224,7 @@ class TestNamespaceQuota:
         notifications_after = Notification.select().where(Notification.target == self.user).count()
 
         assert notifications_after == notifications_before + 1
+
+
+def test_get_quota_for_view_missing_namespace(initialized_db):
+    assert get_quota_for_view("nonexistent-namespace-13384") is None
