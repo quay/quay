@@ -426,11 +426,15 @@ def validate_external_registry_url(
         raise ValueError("URL must include a hostname")
 
     try:
-        url = Request("GET", url).prepare().url
-        parsed = urlparse(url)
+        prepared_url = Request("GET", url).prepare().url
     except Exception:
         raise ValueError("Invalid URL format")
 
+    if not prepared_url:
+        raise ValueError("Invalid URL format")
+
+    url = prepared_url
+    parsed = urlparse(url)
     hostname = parsed.hostname
     if not hostname:
         raise ValueError("URL must include a hostname")
