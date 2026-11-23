@@ -14,7 +14,7 @@ module.exports = merge(common('development'), {
     historyApiFallback: {
       disableDotRule: true,
     },
-    open: true,
+    open: false, // open@11 is ESM-only; webpack-dev-server 4 cannot require() it
     proxy: {
       '/api/v1': {
         target: 'http://localhost:8080',
