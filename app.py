@@ -339,6 +339,7 @@ all_queues = [
     chunk_cleanup_queue,
     repository_gc_queue,
     namespace_gc_queue,
+    proxy_cache_blob_queue,
 ]
 
 # initialize upstream proxy downloader instance

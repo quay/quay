@@ -105,7 +105,19 @@ class ProxyCacheBlobWorker(QueueWorker):
         digest = job_details["digest"]
         username = job_details["username"]
 
-        repo_name = repository.lookup_repository(repo_id).name
+        repo = repository.lookup_repository(repo_id)
+
+        # guard against deletion of repositories in the middle of enqueueing jobs
+        if repo is None:
+            logger.warning(
+                "Repository %d under namespace %s no longer exists, it may have been deleted. Dropping enqueueing of job for blob %s",
+                repo_id,
+                namespace_name,
+                digest,
+            )
+            return
+
+        repo_name = repo.name
         repo_ref = RepositoryReference.for_id(repo_id)
         user_ref = user.get_username(username) if username else None
 
