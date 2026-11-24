@@ -1,5 +1,5 @@
 import json
-from unittest.mock import MagicMock, Mock, PropertyMock, patch
+from unittest.mock import DEFAULT, MagicMock, Mock, PropertyMock, call, patch
 
 import pytest
 
@@ -10,6 +10,7 @@ from buildman.orchestrator import MemoryOrchestrator, OrchestratorConnectionErro
 from util.morecollections import AttrDict
 
 BUILD_UUID = "deadbeef-dead-beef-dead-beefdeadbeef"
+SECOND_BUILD_UUID = "cafebabe-cafe-babe-cafe-babecafebabe"
 
 
 class StopWorkChecker(Exception):
@@ -92,13 +93,23 @@ def test_work_checker_skips_queue_duration_when_job_key_missing(manager, job_ite
 
 
 def test_work_checker_schedules_when_job_key_read_fails(manager, job_item):
+    second_item = AttrDict(body=json.dumps({"build_uuid": SECOND_BUILD_UUID}), retries_remaining=1)
+    manager._queue.get.side_effect = [job_item, second_item, StopWorkChecker()]
+
+    # The first read fails; the second reaches the real orchestrator once storage recovers.
     with (
-        patch.object(manager._orchestrator, "get_key", side_effect=OrchestratorConnectionError()),
+        patch.object(
+            manager._orchestrator,
+            "get_key",
+            side_effect=[OrchestratorConnectionError(), DEFAULT],
+            wraps=manager._orchestrator.get_key,
+        ),
         patch.object(manager, "schedule", return_value=(True, None)) as schedule,
         patch.object(ephemeral, "build_queue_duration") as queue_duration,
     ):
         with pytest.raises(StopWorkChecker):
             manager._work_checker()
 
-    schedule.assert_called_once_with(BUILD_UUID)
-    queue_duration.labels.assert_not_called()
+    assert schedule.call_args_list == [call(BUILD_UUID), call(SECOND_BUILD_UUID)]
+    queue_duration.labels.assert_called_once_with(True)
+    queue_duration.labels.return_value.observe.assert_called_once()
