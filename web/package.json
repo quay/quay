@@ -101,7 +101,7 @@
     "eslint-plugin-react": "^7.33.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "file-loader": "^6.2.0",
-    "happy-dom": "^20.9.0",
+    "happy-dom": "^21.0.4",
     "html-webpack-plugin": "^5.5.0",
     "jws": "^4.0.1",
     "moment": "^2.29.4",
