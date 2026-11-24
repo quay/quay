@@ -1,6 +1,7 @@
 # pylint: disable=redefined-outer-name, unused-argument, invalid-name, missing-docstring, too-many-arguments
 
 import json
+import logging
 import time
 import urllib.parse
 
@@ -746,6 +747,56 @@ def test_get_sub_username_email_without_login_service():
 
     # Should fallback to decoded_id_token["sub"] when no login_service
     assert user_id == "token_sub"
+
+
+def test_get_sub_username_email_without_group_claim_config(oidc_service, caplog):
+    user_info = {
+        "sub": "token_sub",
+        "preferred_username": "testuser",
+    }
+
+    with caplog.at_level(logging.ERROR, logger="oauth.login_utils"):
+        _, _, _, additional_info = get_sub_username_email_from_token(
+            user_info,
+            login_service=oidc_service,
+            fetch_groups=True,
+        )
+
+    assert additional_info == {}
+    assert "PREFERRED_GROUP_CLAIM_NAME" not in caplog.text
+
+
+def test_get_sub_username_email_with_group_claim(oidc_service):
+    oidc_service.config["PREFERRED_GROUP_CLAIM_NAME"] = "groups"
+    user_info = {
+        "sub": "token_sub",
+        "preferred_username": "testuser",
+        "groups": ["group-one", "group-two"],
+    }
+
+    _, _, _, additional_info = get_sub_username_email_from_token(
+        user_info,
+        login_service=oidc_service,
+        fetch_groups=True,
+    )
+
+    assert additional_info == {"groups": ["group-one", "group-two"]}
+
+
+def test_get_sub_username_email_with_missing_configured_group_claim(oidc_service):
+    oidc_service.config["PREFERRED_GROUP_CLAIM_NAME"] = "groups"
+    user_info = {
+        "sub": "token_sub",
+        "preferred_username": "testuser",
+    }
+
+    _, _, _, additional_info = get_sub_username_email_from_token(
+        user_info,
+        login_service=oidc_service,
+        fetch_groups=True,
+    )
+
+    assert additional_info == {}
 
 
 def test_load_keys_from_url():
