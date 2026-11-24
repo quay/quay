@@ -1,4 +1,3 @@
-import hashlib
 import json
 import logging
 import os
@@ -13,7 +12,6 @@ from freezegun import freeze_time
 from mock import patch
 from playhouse.test_utils import assert_query_count
 
-from app import app as realapp
 from app import docker_v2_signing_key, model_cache, proxy_cache_blob_queue, storage
 from data import database, model
 from data.database import (

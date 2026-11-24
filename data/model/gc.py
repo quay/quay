@@ -7,6 +7,7 @@ import features
 from data.database import (
     AccessToken,
     BlobUpload,
+    DeletedNamespace,
     DeletedRepository,
     ImageStorage,
     Label,
@@ -370,8 +371,18 @@ def _purge_proxy_cache_queued_jobs(repo):
     """
     from app import proxy_cache_blob_queue
 
+    namespace = repo.namespace_user
+
+    try:
+        namespace_name = DeletedNamespace.get(
+            DeletedNamespace.namespace == namespace
+        ).original_username
+    except DeletedNamespace.DoesNotExist:
+        namespace_name = namespace.username
+
     num_rows = proxy_cache_blob_queue.delete_namespaced_items(
-        repo.namespace_user.username, str(repo.id)
+        namespace_name,
+        str(repo.id),
     )
     logger.debug("Deleted %d stale jobs from queueitem for repo %d", num_rows, repo.id)
 
