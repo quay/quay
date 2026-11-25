@@ -87,9 +87,18 @@ def get_sub_username_email_from_token(
 
     if fetch_groups:
         group_claim_name = config.get("PREFERRED_GROUP_CLAIM_NAME")
-        if group_claim_name:
+        if not group_claim_name:
+            logger.error(
+                "PREFERRED_GROUP_CLAIM_NAME is required when OIDC group synchronization is enabled"
+            )
+        else:
             groups = user_info.get(group_claim_name)
-            if groups is not None:
+            if groups is None:
+                logger.warning(
+                    "Configured OIDC group claim `%s` was not found in user info",
+                    group_claim_name,
+                )
+            else:
                 additional_info["groups"] = groups
 
     # Call the login service's get_user_id() method to extract user ID from token

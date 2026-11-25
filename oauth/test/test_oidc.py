@@ -749,7 +749,24 @@ def test_get_sub_username_email_without_login_service():
     assert user_id == "token_sub"
 
 
-def test_get_sub_username_email_without_group_claim_config(oidc_service, caplog):
+def test_get_sub_username_email_without_group_sync(oidc_service, caplog):
+    user_info = {
+        "sub": "token_sub",
+        "preferred_username": "testuser",
+    }
+
+    with caplog.at_level(logging.ERROR, logger="oauth.login_utils"):
+        _, _, _, additional_info = get_sub_username_email_from_token(
+            user_info,
+            login_service=oidc_service,
+            fetch_groups=False,
+        )
+
+    assert additional_info == {}
+    assert "PREFERRED_GROUP_CLAIM_NAME" not in caplog.text
+
+
+def test_get_sub_username_email_without_required_group_claim_config(oidc_service, caplog):
     user_info = {
         "sub": "token_sub",
         "preferred_username": "testuser",
@@ -763,7 +780,10 @@ def test_get_sub_username_email_without_group_claim_config(oidc_service, caplog)
         )
 
     assert additional_info == {}
-    assert "PREFERRED_GROUP_CLAIM_NAME" not in caplog.text
+    assert (
+        "PREFERRED_GROUP_CLAIM_NAME is required when OIDC group synchronization is enabled"
+        in caplog.text
+    )
 
 
 def test_get_sub_username_email_with_group_claim(oidc_service):
@@ -783,20 +803,47 @@ def test_get_sub_username_email_with_group_claim(oidc_service):
     assert additional_info == {"groups": ["group-one", "group-two"]}
 
 
-def test_get_sub_username_email_with_missing_configured_group_claim(oidc_service):
+def test_get_sub_username_email_with_missing_configured_group_claim(oidc_service, caplog):
     oidc_service.config["PREFERRED_GROUP_CLAIM_NAME"] = "groups"
     user_info = {
         "sub": "token_sub",
         "preferred_username": "testuser",
     }
 
-    _, _, _, additional_info = get_sub_username_email_from_token(
-        user_info,
-        login_service=oidc_service,
-        fetch_groups=True,
-    )
+    with caplog.at_level(logging.WARNING, logger="oauth.login_utils"):
+        _, _, _, additional_info = get_sub_username_email_from_token(
+            user_info,
+            login_service=oidc_service,
+            fetch_groups=True,
+        )
 
     assert additional_info == {}
+    assert "Configured OIDC group claim `groups` was not found in user info" in caplog.text
+
+
+def test_group_claim_not_required_by_default(oidc_service, app_config):
+    assert oidc_service.requires_group_claim(app_config) is False
+
+
+def test_group_claim_required_for_team_sync(oidc_service, app_config):
+    app_config["FEATURE_TEAM_SYNCING"] = True
+
+    assert oidc_service.requires_group_claim(app_config) is True
+
+
+@pytest.mark.parametrize("group_config", ["SUPERUSER_GROUP", "GLOBAL_READONLY_SUPERUSER_GROUP"])
+def test_group_claim_required_for_oidc_superuser_sync(oidc_service, app_config, group_config):
+    app_config["AUTHENTICATION_TYPE"] = "OIDC"
+    oidc_service.config[group_config] = "quay-admins"
+
+    assert oidc_service.requires_group_claim(app_config) is True
+
+
+def test_group_claim_not_required_for_non_oidc_superuser_config(oidc_service, app_config):
+    app_config["AUTHENTICATION_TYPE"] = "Database"
+    oidc_service.config["SUPERUSER_GROUP"] = "quay-admins"
+
+    assert oidc_service.requires_group_claim(app_config) is False
 
 
 def test_load_keys_from_url():
