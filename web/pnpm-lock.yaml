@@ -15,12 +15,12 @@ overrides:
   '@patternfly/react-core': ^6.0.0
   '@patternfly/react-icons': ^6.0.0
   '@patternfly/react-table': ^6.0.0
-  node-forge: 1.3.2
+  node-forge: 1.4.1
   minimatch: 3.1.5
   svgo: 4.0.1
   immutable: ^5.1.8
   js-yaml: ^4.3.0
-  brace-expansion: ^1.1.18
+  brace-expansion: ^1.1.20
   browserslist: '>=4.28.7'
   fast-uri: ^3.1.7
   compression: 1.8.2
@@ -64,8 +64,8 @@ importers:
         specifier: ^1.19.0
         version: 1.19.0
       brace-expansion:
-        specifier: ^1.1.18
-        version: 1.1.18
+        specifier: ^1.1.20
+        version: 1.1.20
       https-proxy-agent:
         specifier: ^5.0.1
         version: 5.0.1
@@ -215,8 +215,8 @@ importers:
         specifier: ^6.2.0
         version: 6.2.0(webpack@5.106.2)
       happy-dom:
-        specifier: ^20.9.0
-        version: 20.9.0
+        specifier: ^21.0.4
+        version: 21.0.4
       html-webpack-plugin:
         specifier: ^5.5.0
         version: 5.6.7(webpack@5.106.2)
@@ -267,7 +267,7 @@ importers:
         version: 4.1.1(file-loader@6.2.0(webpack@5.106.2))(webpack@5.106.2)
       vitest:
         specifier: ^4.1.11
-        version: 4.1.11(@types/node@20.19.41)(@vitest/coverage-v8@4.1.11)(happy-dom@20.9.0)(vite@8.0.12(@types/node@20.19.41)(sass@1.99.0)(terser@5.47.1))
+        version: 4.1.11(@types/node@20.19.41)(@vitest/coverage-v8@4.1.11)(happy-dom@21.0.4)(vite@8.0.12(@types/node@20.19.41)(sass@1.99.0)(terser@5.47.1))
       webpack:
         specifier: ^5.105.0
         version: 5.106.2(postcss@8.5.14)(webpack-cli@5.1.4)
@@ -2213,8 +2213,8 @@ packages:
     resolution: {integrity: sha512-j//dBVuyacJbvW+tvZ9HuH03fZ46QcaKvvhZickZqtB271DxJ7SNRSNxrV/dZX0085m7hISRZWbzWlJvx/rHSg==}
     engines: {node: '>=14.16'}
 
-  brace-expansion@1.1.18:
-    resolution: {integrity: sha512-Edep/X9fGqVNmzKBVsDYIOtD+z1tuezV70LBjdCst9Tqu76lsnvRiZ6oTic1n+/BIwX6QDGAO94PN4N2SADvtw==}
+  brace-expansion@1.1.20:
+    resolution: {integrity: sha512-5/qk29RyvatwgzNMrvGjkIhKYzpJ0OUnPK+9TU+zS/CMJqzmb+UD0irWu42JfpUvO636fxd8IstgiydZRM/76A==}
 
   braces@3.0.3:
     resolution: {integrity: sha512-yQbXgO/OSZVD2IsiLlro+7Hf6Q18EJrKSEsdoMzKePKXct3gvD8oLcOQdIzGupr5Fj+EDe8gO/lxc1BzfMpxvA==}
@@ -2230,6 +2230,10 @@ packages:
 
   buffer-from@1.1.2:
     resolution: {integrity: sha512-E+XQCRwSbaaiChtv6k6Dwgc+bx+Bs6vuKJHHl5kox/BaKbhiXzqQOwK4cO22yElGp2OCmjwVhT3HmxgyPGnJfQ==}
+
+  buffer-image-size@0.6.4:
+    resolution: {integrity: sha512-nEh+kZOPY1w+gcCMobZ6ETUp9WfibndnosbpwB1iJk/8Gt5ZF2bhS6+B6bPYz424KtwsR6Rflc3tCz1/ghX2dQ==}
+    engines: {node: '>=4.0'}
 
   bundle-name@4.1.1:
     resolution: {integrity: sha512-DdH81/zPLVS11EUgWq3tEu/xn+EzljlMYooDNdzWEnFha3R3NBMpMV1UqYIpjYHV/SgpFKMIX1Oh7o06SjM/oA==}
@@ -3308,8 +3312,8 @@ packages:
   handle-thing@2.0.1:
     resolution: {integrity: sha512-9Qn4yBxelxoh2Ow62nP+Ka/kMnOXRi8BXnRaUwezLNhqelnN49xKz4F/dPP8OYLxLxq6JDtZb2i9XznUQbNPTg==}
 
-  happy-dom@20.9.0:
-    resolution: {integrity: sha512-GZZ9mKe8r646NUAf/zemnGbjYh4Bt8/MqASJY+pSm5ZDtc3YQox+4gsLI7yi1hba6o+eCsGxpHn5+iEVn31/FQ==}
+  happy-dom@21.0.4:
+    resolution: {integrity: sha512-tFm+GaLBgo6o0awHnvHaNoraVo27qJ+2tZEtZ+cIa08hXbeitrxAJajLI05hsUy/2/YTKcUjQYzHe5mCcraLBw==}
     engines: {node: '>=20.0.0'}
 
   has-bigints@1.1.0:
@@ -4301,8 +4305,8 @@ packages:
       encoding:
         optional: true
 
-  node-forge@1.3.2:
-    resolution: {integrity: sha512-6xKiQ+cph9KImrRh0VsjH2d8/GXA4FIMlgU4B757iI1ApvcyA9VlouP0yZJha01V+huImO+kKMU7ih+2+E14fw==}
+  node-forge@1.4.1:
+    resolution: {integrity: sha512-w5/MfWaeMrpR/5ba6fZyAUTLSuE6aYz7H/3cYrqwZEmf5eQS3IaaLgJt4MBv7HglGFWmV22K8h4U18RJQmw/ow==}
     engines: {node: '>= 6.13.0'}
 
   node-releases@2.0.53:
@@ -6065,6 +6069,18 @@ packages:
 
   ws@8.20.1:
     resolution: {integrity: sha512-It4dO0K5v//JtTXuPkfEOaI3uUN87iYPnqo/ZzqCoG3g8uhA66QUMs/SrM0YK7/NAu+r4LMh/9dq2A7k+rHs+w==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
+
+  ws@8.23.0:
+    resolution: {integrity: sha512-wCkmX8QMOrKjgO8HW2WyDbTSGeqkocxgDzS9iR79rEAexty6/2qzilx3Ag8Tqf9ykop3irLKle0MtVn5qjVnoQ==}
     engines: {node: '>=10.0.0'}
     peerDependencies:
       bufferutil: ^4.0.1
@@ -7894,7 +7910,7 @@ snapshots:
       obug: 2.1.1
       std-env: 4.1.0
       tinyrainbow: 3.1.0
-      vitest: 4.1.11(@types/node@20.19.41)(@vitest/coverage-v8@4.1.11)(happy-dom@20.9.0)(vite@8.0.12(@types/node@20.19.41)(sass@1.99.0)(terser@5.47.1))
+      vitest: 4.1.11(@types/node@20.19.41)(@vitest/coverage-v8@4.1.11)(happy-dom@21.0.4)(vite@8.0.12(@types/node@20.19.41)(sass@1.99.0)(terser@5.47.1))
 
   '@vitest/expect@4.1.11':
     dependencies:
@@ -8367,7 +8383,7 @@ snapshots:
       widest-line: 4.0.1
       wrap-ansi: 8.1.0
 
-  brace-expansion@1.1.18:
+  brace-expansion@1.1.20:
     dependencies:
       balanced-match: 1.0.2
       concat-map: 0.0.1
@@ -8387,6 +8403,10 @@ snapshots:
   buffer-equal-constant-time@1.0.1: {}
 
   buffer-from@1.1.2: {}
+
+  buffer-image-size@0.6.4:
+    dependencies:
+      '@types/node': 20.19.41
 
   bundle-name@4.1.1:
     dependencies:
@@ -9630,14 +9650,15 @@ snapshots:
 
   handle-thing@2.0.1: {}
 
-  happy-dom@20.9.0:
+  happy-dom@21.0.4:
     dependencies:
       '@types/node': 20.19.41
       '@types/whatwg-mimetype': 3.0.2
       '@types/ws': 8.18.1
+      buffer-image-size: 0.6.4
       entities: 7.0.1
       whatwg-mimetype: 3.0.0
-      ws: 8.20.1
+      ws: 8.23.0
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -10811,7 +10832,7 @@ snapshots:
 
   minimatch@3.1.5:
     dependencies:
-      brace-expansion: 1.1.18
+      brace-expansion: 1.1.20
 
   minimist@1.2.8: {}
 
@@ -10863,7 +10884,7 @@ snapshots:
     dependencies:
       whatwg-url: 5.0.0
 
-  node-forge@1.3.2: {}
+  node-forge@1.4.1: {}
 
   node-releases@2.0.53: {}
 
@@ -11727,7 +11748,7 @@ snapshots:
   selfsigned@2.4.1:
     dependencies:
       '@types/node-forge': 1.3.14
-      node-forge: 1.3.2
+      node-forge: 1.4.1
 
   semver@6.3.1: {}
 
@@ -12621,7 +12642,7 @@ snapshots:
       sass: 1.99.0
       terser: 5.47.1
 
-  vitest@4.1.11(@types/node@20.19.41)(@vitest/coverage-v8@4.1.11)(happy-dom@20.9.0)(vite@8.0.12(@types/node@20.19.41)(sass@1.99.0)(terser@5.47.1)):
+  vitest@4.1.11(@types/node@20.19.41)(@vitest/coverage-v8@4.1.11)(happy-dom@21.0.4)(vite@8.0.12(@types/node@20.19.41)(sass@1.99.0)(terser@5.47.1)):
     dependencies:
       '@vitest/expect': 4.1.11
       '@vitest/mocker': 4.1.11(vite@8.0.12(@types/node@20.19.41)(sass@1.99.0)(terser@5.47.1))
@@ -12646,7 +12667,7 @@ snapshots:
     optionalDependencies:
       '@types/node': 20.19.41
       '@vitest/coverage-v8': 4.1.11(vitest@4.1.11)
-      happy-dom: 20.9.0
+      happy-dom: 21.0.4
     transitivePeerDependencies:
       - msw
 
@@ -12866,6 +12887,8 @@ snapshots:
   wrappy@1.0.2: {}
 
   ws@8.20.1: {}
+
+  ws@8.23.0: {}
 
   wsl-utils@0.3.1:
     dependencies:
