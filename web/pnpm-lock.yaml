@@ -3174,8 +3174,8 @@ packages:
   focus-trap@7.6.6:
     resolution: {integrity: sha512-v/Z8bvMCajtx4mEXmOo7QEsIzlIOqRXTIwgUfsFOF9gEsespdbD0AkPIka1bSXZ8Y8oZ+2IVDQZePkTfEHZl7Q==}
 
-  follow-redirects@1.16.0:
-    resolution: {integrity: sha512-y5rN/uOsadFT/JfYwhxRS5R7Qce+g3zG97+JrtFZlC9klX/W5hD7iiLzScI4nZqUS7DNUdhPgw4xI8W2LuXlUw==}
+  follow-redirects@1.16.1:
+    resolution: {integrity: sha512-FNvFGzoMLWmE6Yj9spb/zjd7yiNCHiAW9/Tg9CXrQ8wuu32HtlJOwWO11OJafl5FfY3DxTdQ0vj42zU1kvv5jg==}
     engines: {node: '>=4.0'}
     peerDependencies:
       debug: '*'
@@ -8221,7 +8221,7 @@ snapshots:
 
   axios@1.19.0:
     dependencies:
-      follow-redirects: 1.16.0
+      follow-redirects: 1.16.1
       form-data: 4.0.6
       https-proxy-agent: 5.0.1
       proxy-from-env: 2.1.0
@@ -9467,7 +9467,7 @@ snapshots:
     dependencies:
       tabbable: 6.5.0
 
-  follow-redirects@1.16.0: {}
+  follow-redirects@1.16.1: {}
 
   for-each@0.3.5:
     dependencies:
@@ -9804,7 +9804,7 @@ snapshots:
   http-proxy@1.18.1:
     dependencies:
       eventemitter3: 4.0.7
-      follow-redirects: 1.16.0
+      follow-redirects: 1.16.1
       requires-port: 1.0.0
     transitivePeerDependencies:
       - debug
