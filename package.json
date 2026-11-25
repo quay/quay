@@ -80,7 +80,7 @@
     "cross-spawn": "^6.0.6",
     "qs": "^6.16.0",
     "form-data": "^2.5.6",
-    "brace-expansion": "^1.1.16",
+    "brace-expansion": "^1.1.20",
     "tmp": "^0.2.6",
     "js-yaml": "^3.15.0",
     "browserslist": ">=4.28.7"
