@@ -2093,5 +2093,4 @@ def test_job_purge_does_happen_if_feature_flag_is_turned_on(initialized_db):
         with patch("data.model.gc._purge_proxy_cache_queued_jobs") as mock_purge:
             model.gc.purge_repository(repo, force=True)
 
-        # assert that the _purge_proxy_cache_queued_jobs is not called
         mock_purge.assert_called_once()
