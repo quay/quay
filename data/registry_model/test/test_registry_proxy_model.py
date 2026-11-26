@@ -13,10 +13,7 @@ from app import storage
 from data.database import (
     ImageStorage,
     ImageStorageLocation,
-)
-from data.database import Manifest
-from data.database import Manifest as ManifestTable
-from data.database import (
+    Manifest,
     ManifestBlob,
     ManifestChild,
     MediaType,
@@ -1326,8 +1323,6 @@ class TestRegistryProxyModelCreateManifestAndRetargetTag:
                 [t.start() for t in threads]
                 [t.join(timeout=30) for t in threads]
 
-            print(saw_missing, sorted(results), errors)  # temporary
-
             assert not errors, errors
             assert set(results) == set(tags)
             assert all(tag is not None for tag in results.values())
@@ -1335,10 +1330,10 @@ class TestRegistryProxyModelCreateManifestAndRetargetTag:
             # exactly one manifest row has been created and all tags point to the created
             # manifest row
             assert (
-                ManifestTable.select()
+                Manifest.select()
                 .where(
-                    ManifestTable.repository == repo_ref.id,
-                    ManifestTable.digest == UBI8_8_4_DIGEST,
+                    Manifest.repository == repo_ref.id,
+                    Manifest.digest == UBI8_8_4_DIGEST,
                 )
                 .count()
                 == 1
