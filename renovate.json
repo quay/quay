@@ -5,10 +5,12 @@
     "Each update type is grouped into one PR per base branch and runs once a week, on its own day, inside a 02:00-08:59 UTC window. MintMaker runs every few hours, so a window holds two runs: the first opens the PR, the second can merge it once CI has passed.",
     "Automerge is on, but master and the redhat-* branches require the all-green check and one code-owner approval, so a PR merges only after review.",
     "Vulnerability fixes ignore the weekly schedule, the grouping and the PR limits (Renovate vulnerabilityAlerts defaults: schedule [], groupName null, prConcurrentLimit 0), so CVE PRs stay immediate.",
+    "Vulnerability-alert updates force the vulnerabilityAlerts rangeStrategy over packageRules (Renovate default update-lockfile), so it is set to bump there too; this applies to every manager's alert PRs, not only npm.",
     "Do not set branchConcurrentLimit. Renovate counts existing branches across every base branch, so a small limit stops all new branches, including vulnerability fixes. MintMaker sets it to 0 and its docs advise against changing it."
   ],
   "vulnerabilityAlerts": {
-    "enabled": true
+    "enabled": true,
+    "rangeStrategy": "bump"
   },
   "osvVulnerabilityAlerts": false,
   "dependencyDashboard": false,
@@ -61,10 +63,14 @@
       "enabled": false
     },
     {
-      "description": "npm: one grouped PR per base branch, Monday 02:00-08:59 UTC. A separate groupName per manager keeps a PR left unmerged from one day from absorbing the next day's updates; group:all would put every manager in one branch.",
+      "description": "npm: one grouped PR per base branch, Monday 02:00-08:59 UTC. A separate groupName per manager keeps a PR left unmerged from one day from absorbing the next day's updates; group:all would put every manager in one branch. Bumping the range in package.json (overrides included) lets npm regenerate the lockfile; a lockfile-only update of an overridden package fails EOVERRIDE. constraints.pnpm ^10 matches CI and the Dockerfile (pnpm 11 rewrites about 1300 lines of the pnpm-10 lockfile), but it applies only where Renovate installs its own tools (containerbase); MintMaker's image ships a global pnpm 11, so it likely has no effect there.",
       "matchManagers": ["npm"],
       "groupName": "npm dependencies",
       "groupSlug": "npm",
+      "rangeStrategy": "bump",
+      "constraints": {
+        "pnpm": "^10"
+      },
       "schedule": ["* 2-8 * * 1"],
       "automerge": true
     },
