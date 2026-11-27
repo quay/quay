@@ -218,8 +218,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
               (configHook.config && !formHook.isDirty) ||
               !formHook.formValues.externalReference?.trim() ||
               !formHook.formValues.tags?.trim() ||
-              (configHook.config &&
-                !formHook.formValues.syncStartDate?.trim()) ||
+              !formHook.formValues.syncStartDate?.trim() ||
               !formHook.formValues.syncValue?.trim() ||
               !formHook.formValues.robotUsername?.trim() ||
               !formHook.formValues.skopeoTimeoutInterval ||
