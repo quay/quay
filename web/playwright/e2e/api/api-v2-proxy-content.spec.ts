@@ -198,8 +198,7 @@ test.describe(
       const upstreamRepo = 'prometheus/node-exporter';
       const request = await playwright.request.newContext({
         ignoreHTTPSErrors: true,
-        // commented out because this requires #7758 which is not backported so this test fails
-        // ...(REQUEST_PROXY ? {proxy: REQUEST_PROXY} : {}),
+        ...(REQUEST_PROXY ? {proxy: REQUEST_PROXY} : {}),
       });
 
       try {
