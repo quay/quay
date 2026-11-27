@@ -28,6 +28,7 @@ from endpoints.api import (
     log_action,
     nickname,
     path_param,
+    require_fresh_login,
     require_scope,
     resource,
     show_if,
@@ -294,6 +295,7 @@ class OrgMirrorConfig(ApiResource):
         return datetime.strptime(string, "%Y-%m-%dT%H:%M:%SZ")
 
     @require_scope(scopes.ORG_ADMIN)
+    @require_fresh_login
     @nickname("createOrgMirrorConfig")
     @validate_json_request("CreateOrgMirrorConfig")
     def post(self, orgname):
@@ -400,6 +402,7 @@ class OrgMirrorConfig(ApiResource):
         return "", 201
 
     @require_scope(scopes.ORG_ADMIN)
+    @require_fresh_login
     @nickname("updateOrgMirrorConfig")
     @validate_json_request("UpdateOrgMirrorConfig")
     def put(self, orgname):
