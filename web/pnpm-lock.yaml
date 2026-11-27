@@ -136,7 +136,7 @@ importers:
         specifier: ^3.0.1
         version: 3.0.1(webpack@5.106.2)
       '@playwright/test':
-        specifier: ^1.56.1
+        specifier: 1.60.0
         version: 1.60.0
       '@testing-library/dom':
         specifier: ^10.4.1
