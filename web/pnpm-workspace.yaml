@@ -17,7 +17,7 @@ overrides:
   svgo: 4.0.1
   immutable: ^5.1.8
   js-yaml: ^4.3.0
-  brace-expansion: ^1.1.18
+  brace-expansion: ^1.1.20
   browserslist: '>=4.28.7'
   fast-uri: ^3.1.7
   compression: 1.8.2
