@@ -86,14 +86,20 @@ def get_sub_username_email_from_token(
     lusername = get_username_from_userinfo(user_info, config)
 
     if fetch_groups:
-        if config.get("PREFERRED_GROUP_CLAIM_NAME", None) is None:
-            logger.exception(
-                "PREFERRED_GROUP_CLAIM_NAME needs to be added in the config for teamsync via OIDC"
+        group_claim_name = config.get("PREFERRED_GROUP_CLAIM_NAME")
+        if not group_claim_name:
+            logger.error(
+                "PREFERRED_GROUP_CLAIM_NAME is required when OIDC group synchronization is enabled"
             )
         else:
-            additional_info["groups"] = user_info.get(
-                config.get("PREFERRED_GROUP_CLAIM_NAME", None)
-            )
+            groups = user_info.get(group_claim_name)
+            if groups is None:
+                logger.warning(
+                    "Configured OIDC group claim `%s` was not found in user info",
+                    group_claim_name,
+                )
+            else:
+                additional_info["groups"] = groups
 
     # Call the login service's get_user_id() method to extract user ID from token
     if login_service:
@@ -207,7 +213,7 @@ def _conduct_oauth_login(
                 service_name=service_name, error_message="Configuration error in this provider"
             )
 
-        (user_obj, err) = auth_system.link_user(lookup_value)
+        user_obj, err = auth_system.link_user(lookup_value)
         if err is not None:
             logger.debug("%s %s not found: %s", bound_field_name, lookup_value, err)
             msg = "%s %s not found in backing auth system" % (bound_field_name, lookup_value)

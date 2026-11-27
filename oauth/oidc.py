@@ -172,6 +172,14 @@ class OIDCLoginService(OAuthService):
     def public_client(self) -> bool:
         return bool(self.config.get("PUBLIC_CLIENT", False))
 
+    def requires_group_claim(self, app_config) -> bool:
+        """Returns whether an enabled OIDC synchronization feature needs group claims."""
+        team_sync_enabled = app_config.get("FEATURE_TEAM_SYNCING", False)
+        superuser_group_sync_enabled = app_config.get("AUTHENTICATION_TYPE") == "OIDC" and (
+            self.config.get("SUPERUSER_GROUP") or self.config.get("GLOBAL_READONLY_SUPERUSER_GROUP")
+        )
+        return bool(team_sync_enabled or superuser_group_sync_enabled)
+
     def exchange_code_for_tokens(
         self,
         app_config,
@@ -246,7 +254,11 @@ class OIDCLoginService(OAuthService):
             user_info = decoded_id_token
 
         return get_sub_username_email_from_token(
-            decoded_id_token, user_info, self, self._mailing, fetch_groups=True
+            decoded_id_token,
+            user_info,
+            self,
+            self._mailing,
+            fetch_groups=self.requires_group_claim(app_config),
         )
 
     @property
