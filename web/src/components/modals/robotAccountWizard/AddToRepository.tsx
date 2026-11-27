@@ -62,6 +62,7 @@ export default function AddToRepository(props: AddToRepositoryProps) {
   const onTableModeChange: ToggleGroupItemProps['onChange'] = (event) => {
     const id = event.currentTarget.id;
     setTableMode(id as TableModeType);
+    setPage(1);
     if (id == 'All') {
       setTableItems(props.repos);
     } else if (id == 'Selected') {
