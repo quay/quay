@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import shutil
@@ -158,3 +159,197 @@ class TestGunicornTimeouts:
         web_match = re.search(r"gunicorn --timeout=(\d+) -c .+gunicorn_web\.py", rendered)
         assert web_match is not None
         assert web_match.group(1) == "45"
+
+
+def _render_with_script(tmp_path, config_yaml, **extra_env):
+    """
+    Helper function that runs supervisord_conf_create.py against a temporary directory and
+    returns supervisord.conf file.
+    """
+    quay_config_dir = tmp_path.joinpath("conf")
+    stack_path = quay_config_dir.joinpath("stack")
+
+    stack_path.mkdir(parents=True)
+
+    config_file = stack_path.joinpath("config.yaml")
+    config_file.write_text(config_yaml)
+
+    here = os.path.dirname(os.path.abspath(__file__))
+
+    shutil.copy(
+        os.path.join(
+            here,
+            "..",
+            "..",
+            "supervisord.conf.jnj",
+        ),
+        quay_config_dir.joinpath("supervisord.conf.jnj"),
+    )
+
+    env = os.environ.copy()
+
+    # don't inherit the dev override, remove it from env. variables
+    env.pop("QUAY_OVERRIDE_CONFIG", None)
+
+    env.update(
+        QUAYDIR=str(tmp_path),
+        QUAYPATH=".",
+        QUAYCONF=str(quay_config_dir),
+        QUAY_SERVICES="",
+        QUAY_OVERRIDE_SERVICES="",
+        QUAY_LOGGING="stdout",
+        QUAY_HOTRELOAD="false",
+    )
+    env.update(extra_env)
+
+    script_path = os.path.join(here, "..", "supervisord_conf_create.py")
+
+    subprocess.run([sys.executable, script_path], env=env, check=True)
+    return quay_config_dir.joinpath("supervisord.conf").read_text()
+
+
+def _autostart(rendered, program):
+    """
+    Helper that detects when a specific program section starts and ends (either at the start of
+    next program section or runs to the end of file).
+    """
+    section = re.search(
+        r"\[program:%s\](.*?)(?=^\[|\Z)" % re.escape(program),
+        rendered,
+        re.DOTALL | re.MULTILINE,
+    )
+    assert section is not None, "no [program:%s] section" % program
+    match = re.search(
+        r"^autostart = (\w+)",
+        section.group(1),
+        re.MULTILINE,
+    )
+
+    assert match is not None, "no autostart line in [program:%s]" % program
+
+    return match.group(1)
+
+
+class TestRenderSupervisorDConf:
+    @pytest.mark.parametrize(
+        ("config_yaml", "env", "expected"),
+        [
+            pytest.param("", {}, {"securityworker": "false", "nginx": "true"}, id="feature-off"),
+            pytest.param(
+                "FEATURE_SECURITY_SCANNER: true\n",
+                {},
+                {
+                    "securityworker": "true",
+                    "nginx": "true",
+                    "gunicorn-secscan": "true",
+                    "securityscanningnotificationworker": "false",
+                },
+                id="scanner-feature-on",
+            ),
+            pytest.param(
+                "FEATURE_SECURITY_SCANNER: true\nFEATURE_AUTO_PRUNE: true\n",
+                {},
+                {"securityworker": "true", "nginx": "true", "autopruneworker": "true"},
+                id="multiple-features-on",
+            ),
+            pytest.param(
+                "",
+                {},
+                {"nginx": "true", "gunicorn-registry": "true", "gunicorn-web": "true"},
+                id="default-services-always-on",
+            ),
+            pytest.param(
+                "",
+                {"QUAY_OVERRIDE_SERVICES": "securityworker=true"},
+                {"securityworker": "true"},
+                id="override-services-wins-securityworker-true",
+            ),
+            pytest.param(
+                "FEATURE_SECURITY_SCANNER: true\n",
+                {"QUAY_OVERRIDE_SERVICES": "securityworker=false"},
+                {"securityworker": "false"},
+                id="override-services-wins-securityworker-false",
+            ),
+            pytest.param(
+                "",
+                {"QUAY_OVERRIDE_CONFIG": json.dumps({"FEATURE_SECURITY_SCANNER": True})},
+                {"securityworker": "true"},
+                id="override-config-is-honored-securityworker-true",
+            ),
+            pytest.param(
+                "FEATURE_SECURITY_SCANNER: true\n",
+                {"QUAY_OVERRIDE_CONFIG": json.dumps({"FEATURE_SECURITY_SCANNER": False})},
+                {"securityworker": "false"},
+                id="override-config-wins-over-securityworker-false",
+            ),
+            pytest.param(
+                "",
+                {"QUAY_OVERRIDE_CONFIG": "{not json"},
+                {"securityworker": "true"},
+                id="invalid-override-config-enables-all-workers",
+            ),
+            pytest.param(
+                "FEATURE_SECURITY_SCANNER: true\nFEATURE_SECURITY_NOTIFICATIONS: true\n",
+                {},
+                {
+                    "securityworker": "true",
+                    "gunicorn-secscan": "true",
+                    "nginx": "true",
+                    "securityscanningnotificationworker": "true",
+                },
+                id="both-security-scanner-and-notifications-enabled",
+            ),
+            pytest.param(
+                "FEATURE_SECURITY_SCANNER: false\nFEATURE_SECURITY_NOTIFICATIONS: true\n",
+                {},
+                {
+                    "securityworker": "false",
+                    "securityscanningnotificationworker": "false",
+                    "gunicorn-secscan": "false",
+                    "nginx": "true",
+                },
+                id="security-scanner-feature-off-turns-off-notifications",
+            ),
+            pytest.param(
+                "",
+                {},
+                {"buildlogsarchiver": "true", "gunicorn-blobstream": "false"},
+                id="defaults-for-buildlogsarchiver-and-gunicorn-blobstream",
+            ),
+            pytest.param(
+                "FEATURE_BUILD_SUPPORT: false\n",
+                {},
+                {"buildlogsarchiver": "false"},
+                id="skip-buildlogsarchiver-if-builders-arent-enabled",
+            ),
+            pytest.param(
+                "FEATURE_PROXY_CACHE: true\n",
+                {},
+                {"gunicorn-blobstream": "true"},
+                id="start-blobstream-if-proxy-cache-enabled",
+            ),
+        ],
+    )
+    def test_autostart(self, tmp_path, config_yaml, env, expected):
+        """
+        Verifies that proper services are marked to autostart after config read.
+        """
+        rendered = _render_with_script(tmp_path, config_yaml, **env)
+        for program, value in expected.items():
+            assert _autostart(rendered, program) == value, program
+
+    def test_quay_services_allowlist_wins_over_gating(self, tmp_path):
+        """
+        Verifies that the service allow list wins over the provided configuration.
+        """
+        rendered = _render_with_script(
+            tmp_path, "", QUAY_SERVICES="repomirrorworker,securityworker,nginx"
+        )
+
+        # only listed services should be started
+        assert _autostart(rendered, "repomirrorworker") == "true"
+        assert _autostart(rendered, "securityworker") == "true"
+        assert _autostart(rendered, "nginx") == "true"
+
+        # everything else should be turned off, even services that are usually not
+        assert _autostart(rendered, "gunicorn-web") == "false"
