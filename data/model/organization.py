@@ -60,6 +60,15 @@ def create_organization(
                     "Email has already been used: %s" % effective_email
                 )
 
+            if (
+                effective_email
+                and not features.ORG_SHARED_EMAIL
+                and find_organizations_by_email(effective_email).count() > 0
+            ):
+                raise InvalidEmailAddressException(
+                    "Email is already associated with another organization: %s" % effective_email
+                )
+
             new_org = _create_org_user(name, effective_email, is_possible_abuser)
 
             owners_team = team.create_team("owners", new_org, "admin")
