@@ -140,7 +140,7 @@
     "svgo": "4.0.1",
     "immutable": "^5.1.8",
     "fast-uri": "^3.1.7",
-    "brace-expansion": "^1.1.18",
+    "brace-expansion": "^1.1.20",
     "qs": "^6.16.0",
     "browserslist": ">=4.28.7",
     "compression": "1.8.2"
@@ -162,7 +162,7 @@
       "svgo": "4.0.1",
       "immutable": "^5.1.8",
       "fast-uri": "^3.1.7",
-      "brace-expansion": "^1.1.18",
+      "brace-expansion": "^1.1.20",
       "qs": "^6.16.0",
       "browserslist": ">=4.28.7",
       "compression": "1.8.2"
