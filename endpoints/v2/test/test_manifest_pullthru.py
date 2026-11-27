@@ -872,6 +872,48 @@ class TestManifestPullThroughStorage:
             assert placements.count() == 0
 
 
+class TestManifestPullThroughRejectedName:
+    @pytest.mark.parametrize("method", ["GET", "HEAD"])
+    @pytest.mark.parametrize("name", ["library/build", "library/build/ambiguous"])
+    @pytest.mark.parametrize(
+        "view_name,manifest_ref",
+        [
+            ("v2.fetch_manifest_by_tagname", "latest"),
+            ("v2.fetch_manifest_by_digest", "sha256:" + "a" * 64),
+        ],
+    )
+    def test_rejected_repository_returns_name_unknown(
+        self, client, app, method, name, view_name, manifest_ref
+    ):
+        model_cache.empty_for_testing()
+        user = model.user.get_user("devtable")
+        orgname = "rejected-name-cache"
+        model.organization.create_organization(orgname, "cache@example.com", user)
+        model.proxy_cache.create_proxy_cache_config(
+            org_name=orgname, upstream_registry="docker.io", expiration_s=3600
+        )
+        context, subject = build_context_and_subject(ValidatedAuthContext(user=user))
+        repository = f"{orgname}/{name}"
+        headers = _get_auth_headers(subject, context, repository)
+        proxy = MagicMock()
+        with patch("data.registry_model.registry_proxy_model.Proxy", return_value=proxy):
+            response = conduct_call(
+                client,
+                view_name,
+                url_for,
+                method,
+                {"repository": repository, "manifest_ref": manifest_ref},
+                expected_code=404,
+                headers=headers,
+            )
+        if method == "GET":
+            assert response.get_json()["errors"][0]["code"] == "NAME_UNKNOWN"
+        else:
+            assert response.data == b""
+        assert model.repository.get_repository(orgname, name) is None
+        proxy.manifest_exists.assert_not_called()
+
+
 class TestManifestPullThroughUpstreamDown:
     """Tests that cached images can be served when the upstream registry is unavailable."""
 
