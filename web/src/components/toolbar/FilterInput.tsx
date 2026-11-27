@@ -3,7 +3,6 @@ import {
   Panel,
   PanelMain,
   PanelMainBody,
-  Popper,
   SearchInput,
   ToolbarItem,
 } from '@patternfly/react-core';
@@ -15,33 +14,7 @@ export function FilterInput(props: FilterInputProps) {
   const [isAdvancedFilterMenuOpen, setAdvancedFilterMenuOpen] = useState(false);
 
   const searchInputRef = React.useRef(null);
-  const advancedFilterMenuRef = React.useRef(null);
-  const containerRef = React.useRef(null);
-
-  const advancedFilterMenu = (
-    <Panel
-      variant="raised"
-      ref={advancedFilterMenuRef}
-      id="filter-input-advanced-search"
-    >
-      <PanelMain>
-        <PanelMainBody>
-          <Checkbox
-            label="Use regular expressions"
-            id="filter-input-regex-checker"
-            name="filter-input-regex-checkbox"
-            isChecked={props.searchState.isRegEx}
-            onChange={(e, checked) =>
-              props.onChange((prev: SearchState) => ({
-                ...prev,
-                isRegEx: checked,
-              }))
-            }
-          />
-        </PanelMainBody>
-      </PanelMain>
-    </Panel>
-  );
+  const advancedFilterMenuRef = React.useRef<HTMLDivElement>(null);
 
   const setSearchState = (value: string) => {
     props.onChange((prev: SearchState) => ({
@@ -74,7 +47,7 @@ export function FilterInput(props: FilterInputProps) {
 
   return (
     <ToolbarItem>
-      <div ref={containerRef}>
+      <div>
         <SearchInput
           ref={searchInputRef}
           placeholder={`Search by ${props.searchState.field.toLowerCase()}${
@@ -93,14 +66,29 @@ export function FilterInput(props: FilterInputProps) {
           openMenuButtonAriaLabel="Open advanced search"
           resetButtonLabel="Reset search"
         />
-        {isAdvancedFilterMenuOpen && (
-          <Popper
-            triggerRef={searchInputRef}
-            popper={advancedFilterMenu}
-            isVisible={isAdvancedFilterMenuOpen}
-            appendTo={containerRef.current || undefined}
-          />
-        )}
+        {/* The panel is always present in the DOM so that test selectors can
+            find [id="filter-input-advanced-search"] regardless of open state.
+            The hidden attribute hides it visually when the menu is closed. */}
+        <div ref={advancedFilterMenuRef} hidden={!isAdvancedFilterMenuOpen}>
+          <Panel variant="raised" id="filter-input-advanced-search">
+            <PanelMain>
+              <PanelMainBody>
+                <Checkbox
+                  label="Use regular expressions"
+                  id="filter-input-regex-checker"
+                  name="filter-input-regex-checkbox"
+                  isChecked={props.searchState.isRegEx}
+                  onChange={(e, checked) =>
+                    props.onChange((prev: SearchState) => ({
+                      ...prev,
+                      isRegEx: checked,
+                    }))
+                  }
+                />
+              </PanelMainBody>
+            </PanelMain>
+          </Panel>
+        </div>
       </div>
     </ToolbarItem>
   );
