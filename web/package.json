@@ -115,6 +115,7 @@
     "cypress": "^13.13.2"
   },
   "overrides": {
+    "open": "11.0.0",
     "cross-spawn": "^7.0.6",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
