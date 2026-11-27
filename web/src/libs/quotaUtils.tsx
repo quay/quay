@@ -1,4 +1,5 @@
 import {Tooltip} from '@patternfly/react-core';
+import {IQuotaLimit} from 'src/resources/QuotaResource';
 import {formatSize} from './utils';
 
 export interface IQuotaReport {
@@ -107,5 +108,18 @@ export function renderQuotaConsumed(
       {totalDisplay}
       {backfillElement}
     </>
+  );
+}
+
+// A quota policy allows a single Reject limit; limitId is the limit being
+// updated, so it does not count against itself.
+export function hasOtherRejectLimit(
+  limits: IQuotaLimit[],
+  type: IQuotaLimit['type'],
+  limitId: string,
+): boolean {
+  return (
+    type === 'Reject' &&
+    limits.some((limit) => limit.type === 'Reject' && limit.id !== limitId)
   );
 }
