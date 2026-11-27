@@ -88,7 +88,7 @@ jobs:
       - name: Docker Build
         run: cd config-tool && docker build -t localhost/config-tool:latest .
       - name: Cypress run
-        uses: cypress-io/github-action@v5
+        uses: cypress-io/github-action@v7.4.10
         with:
           browser: chrome
           start: docker run --rm -p 8080:8080 -v ${{ github.workspace }}/config-tool/pkg/lib/editor/cypress/conf:/conf localhost/config-tool:latest editor --config-dir /conf --password qwerty
