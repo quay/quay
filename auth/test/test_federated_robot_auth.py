@@ -114,6 +114,7 @@ def test_validate_federated_robot_auth_expired_jwt(app):
         {
             "issuer": "https://mock-oidc-server.com",
             "subject": robot.username,
+            "audiences": ["mock-client-id"],
         }
     ]
 
@@ -135,7 +136,13 @@ def test_validate_federated_robot_auth_rejects_jwt_before_not_before(app):
     robot, _ = model.user.create_robot("somerobot", model.user.get_user("devtable"))
     model.user.create_robot_federation_config(
         robot,
-        [{"issuer": "https://mock-oidc-server.com", "subject": robot.username}],
+        [
+            {
+                "issuer": "https://mock-oidc-server.com",
+                "subject": robot.username,
+                "audiences": ["mock-client-id"],
+            }
+        ],
     )
     token = generate_mock_oidc_token(
         subject=robot.username,
@@ -155,6 +162,7 @@ def test_validate_federated_robot_auth_valid_jwt(app):
         {
             "issuer": "https://mock-oidc-server.com",
             "subject": robot.username,
+            "audiences": ["mock-client-id"],
         }
     ]
     model.user.create_robot_federation_config(robot, fed_config)
@@ -289,6 +297,39 @@ def test_validate_federated_robot_auth_rejects_unconfigured_audience(app):
     header = f"Basic {base64.b64encode(f'{robot.username}:{token}'.encode()).decode()}"
 
     with pytest.raises(InvalidRobotCredentialException, match="Token audience is not allowed"):
+        validate_federated_auth(header)
+
+
+@patch.object(requests.Session, "request", mock_request)
+@patch.object(requests.Session, "get", mock_get)
+def test_validate_federated_robot_auth_rejects_binding_without_audiences(app):
+    robot, _ = model.user.create_robot("no-audience", model.user.get_user("devtable"))
+    model.user.create_robot_federation_config(
+        robot,
+        [{"issuer": "https://mock-oidc-server.com", "subject": robot.username}],
+    )
+    token = generate_mock_oidc_token(subject=robot.username, audience="another-service")
+    header = f"Basic {base64.b64encode(f'{robot.username}:{token}'.encode()).decode()}"
+
+    with pytest.raises(
+        InvalidRobotCredentialException,
+        match="Federation binding does not configure allowed audiences",
+    ):
+        validate_federated_auth(header)
+
+
+@patch.object(requests.Session, "request", mock_request)
+@patch.object(requests.Session, "get", mock_get)
+def test_validate_federated_robot_auth_rejects_token_and_binding_without_subject(app):
+    robot, _ = model.user.create_robot("no-subject", model.user.get_user("devtable"))
+    model.user.create_robot_federation_config(
+        robot,
+        [{"issuer": "https://mock-oidc-server.com", "audiences": ["quay"]}],
+    )
+    token = generate_mock_oidc_token(subject=None, audience="quay")
+    header = f"Basic {base64.b64encode(f'{robot.username}:{token}'.encode()).decode()}"
+
+    with pytest.raises(InvalidRobotCredentialException, match="Token does not contain subject"):
         validate_federated_auth(header)
 
 

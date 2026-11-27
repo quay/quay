@@ -182,7 +182,13 @@ def validate_sso_oauth_token(token):
 
         azp = decoded_id_token.get("azp")
         allowed_clients = service.allowed_clients
-        if allowed_clients and azp and azp not in allowed_clients:
+        if allowed_clients and (not isinstance(azp, str) or not azp):
+            logger.warning("SSO JWT is missing azp required by the allowed clients policy")
+            return ValidateResult(
+                AuthKind.ssojwt,
+                error_message="Token is missing required 'azp' claim",
+            )
+        if allowed_clients and azp not in allowed_clients:
             logger.warning("SSO JWT azp '%s' not in allowed clients: %s", azp, allowed_clients)
             return ValidateResult(
                 AuthKind.ssojwt,
