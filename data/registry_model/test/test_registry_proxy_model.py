@@ -1,6 +1,8 @@
 import json
 import os
 import random
+import threading
+import uuid
 from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
@@ -15,8 +17,9 @@ from data.database import (
     ManifestBlob,
     ManifestChild,
     MediaType,
+    Repository,
     Tag,
-    db_transaction,
+    db,
     get_epoch_timestamp_ms,
 )
 from data.model import (
@@ -28,17 +31,16 @@ from data.model import (
     user,
 )
 from data.model.blob import store_blob_record_and_temp_link
-from data.model.oci.manifest import get_or_create_manifest
+from data.model.oci.manifest import _ManifestAlreadyExists, get_or_create_manifest
 from data.model.organization import create_organization
 from data.model.proxy_cache import create_proxy_cache_config
-from data.model.repository import create_repository
-from data.model.storage import get_layer_path
+from data.model.repository import create_repository, get_repository
+from data.model.storage import get_layer_path, with_blob_lock_or_fallback
 from data.model.user import get_user
 from data.registry_model import registry_model
 from data.registry_model.datatypes import Manifest as ManifestType
 from data.registry_model.registry_proxy_model import (
     ProxyModel,
-    get_proxy_cache_config_for_org,
 )
 from data.registry_model.test import testdata
 from digest.digest_tools import sha256_digest
@@ -187,6 +189,65 @@ class TestLookUpRepositoryWithRepoCreationVisibilityFlag:
             )
             assert repo_ref is not None
             assert repo_ref.is_public is True
+
+    @pytest.mark.skipif(
+        not os.environ.get("TEST_DATABASE_URI", "").startswith("postgresql"),
+        reason="Concurrency can only be tested on a real PostgreSQL database",
+    )
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_multiple_concurrent_fetches_of_tags_do_not_raise_exception(self):
+        """
+        Verifies that fetching of multiple tags at the same time does not raise a
+        tag exception caused by the same repo being concurrently created with each
+        request.
+        """
+        name = f"library/race-{uuid.uuid4().hex[:8]}"
+        n = 6
+
+        # must commit changes to the database to make sure that all threads have
+        # the exact same context
+        db.commit()
+
+        barrier = threading.Barrier(n, timeout=10)
+
+        results, errors = [], []
+
+        def worker():
+            """
+            Helper worker that will be started by each thread checking
+            if the manifest exists.
+            """
+            try:
+                barrier.wait()
+                with db.connection_context():
+                    results.append(
+                        self.proxy_model.lookup_repository(
+                            self.orgname, name, manifest_ref=self.tag
+                        )
+                    )
+            except Exception as exc:
+                errors.append(exc)
+
+        try:
+            with patch.object(self.proxy_model._proxy, "manifest_exists"):
+                threads = [threading.Thread(target=worker) for _ in range(n)]
+                [t.start() for t in threads]
+                [t.join(timeout=15) for t in threads]
+
+                assert not errors, errors
+                assert (
+                    len(results) == n
+                ), f"Expected {n} results, got {len(results)}. A thread may have deadlocked."
+
+                assert all(r is not None for r in results)
+                assert len({r.id for r in results}) == 1
+                assert Repository.select().where(Repository.name == name).count() == 1
+        finally:
+            # purge repository
+            org = user.get_namespace_user(self.orgname)
+            if org is not None:
+                assert user.delete_user(org, [])
+            db.commit()
 
 
 @pytest.mark.xdist_group("registry_proxy_serial")
@@ -550,15 +611,44 @@ class TestRegistryProxyModelCreateManifestAndRetargetTag:
         ), "sub manifest tags must have temp tag name, not parent manifest name"
 
     @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_create_manifest_with_temp_tags_reuses_complete_manifest_list(self, create_repo):
+        """
+        Verifies that subsequent calls already reuse inserted manifest lists and their chidlren
+        without inserting new links.
+        """
+        repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
+        input_manifest = parse_manifest_from_bytes(
+            Bytes.for_string_or_unicode(testdata.UBI8_LATEST["manifest"]),
+            testdata.UBI8_LATEST["content-type"],
+            sparse_manifest_support=True,
+        )
+
+        proxy_model = ProxyModel(self.orgname, self.upstream_repository, self.user)
+
+        # a competing request has already comitted the manifest list and its links
+        first, _ = proxy_model._create_manifest_with_temp_tag(repo_ref, input_manifest)
+        links_before = ManifestChild.select().where(ManifestChild.manifest == first.id).count()
+        assert links_before > 0
+
+        # 2nd request: reuse the comitted links (no conflict, no duplicate links)
+        second, _ = proxy_model._create_manifest_with_temp_tag(repo_ref, input_manifest)
+        assert second.id == first.id
+        assert (
+            ManifestChild.select().where(ManifestChild.manifest == first.id).count() == links_before
+        )
+
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
     def test_lookup_manifest_with_allow_hidden_and_allow_dead_in_create_manifest_with_temp_tag(
         self, create_repo
     ):
         """
-        Test that _create_manifest_with_temp_tag calls oci.manifest.lookup_manifest
-        with allow_hidden=True, allow_dead=True when looking up child manifests.
+        Test the lookups _create_manifest_with_temp_tag makes through
+        oci.manifest.lookup_manifest:
 
-        This test specifically covers the change on line 586 where
-        oci.manifest.lookup_manifest is called with these specific parameters.
+        - the manifest itself is looked up first (allow_dead=True), so a manifest that a
+          concurrent request already created is reused instead of inserted again;
+        - each child manifest of a manifest list is then looked up with
+          allow_hidden=True, allow_dead=True.
         """
         repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
         input_manifest = parse_manifest_from_bytes(
@@ -605,16 +695,25 @@ class TestRegistryProxyModelCreateManifestAndRetargetTag:
                             )
                         )
 
-                    # Check that lookup_manifest was called the expected number of times
-                    assert mock_lookup.call_count == len(expected_calls)
+                    # Check that lookup_manifest was called the expected number of times.
+                    # we add +1 here due to an extra lookup right at the beginning of the
+                    # function call.
+                    assert mock_lookup.call_count == len(expected_calls) + 1
 
-                    # Verify each call had the correct parameters
-                    for i, call in enumerate(mock_lookup.call_args_list):
+                    # Verify each child call had the correct parameter (starting at
+                    # index 1, index 0 is the lookup of the manifest list itself)
+                    for i, call in enumerate(mock_lookup.call_args_list[1:]):
                         args, kwargs = call
                         assert args[0] == repo_ref.id  # repository_id
                         assert args[1] == expected_calls[i][0][1]  # child.digest
                         assert kwargs["allow_hidden"] is True
                         assert kwargs["allow_dead"] is True
+
+                    # verify that the lookup at index 0 had correct parameters
+                    # (lookup of the manifest list)
+                    first_args, first_kwargs = mock_lookup.call_args_list[0]
+                    assert first_args == (repo_ref.id, input_manifest.digest)
+                    assert first_kwargs == {"allow_dead": True}
 
     @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
     def test_connect_existing_manifest_to_manifest_list(self, create_repo):
@@ -982,6 +1081,162 @@ class TestRegistryProxyModelCreateManifestAndRetargetTag:
         assert not delete_called[
             "called"
         ], "ManifestBlob.delete() should not be called when no blobs were created"
+
+    @patch("data.registry_model.registry_proxy_model.time.sleep")
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_create_manifest_handling_race_retries_then_succeeds(self, mock_sleep):
+        """
+        Verifies that on a race during insertion of manifests we do not raise an exception
+        immediately, but try to insert it again.
+        """
+        proxy_model = ProxyModel(self.orgname, self.upstream_repository, self.user)
+
+        # mock original create_fn
+        create_fn = MagicMock(
+            side_effect=[_ManifestAlreadyExists(Exception("dup")), ("manifest", "tag")]
+        )
+        manifest = MagicMock(digest=UBI8_8_4_DIGEST)
+
+        # try to insert the manifest
+        result = proxy_model._create_manifest_handling_race(create_fn, MagicMock(), manifest, "8.4")
+
+        # result must be ("manifest", "tag")
+        assert result == ("manifest", "tag")
+
+        # create_fn must be called at most 2 times
+        assert create_fn.call_count == 2
+
+        # sleep must have been called once
+        mock_sleep.assert_called_once()
+
+    @patch("data.registry_model.registry_proxy_model.time.sleep")
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_create_manifest_handling_race_does_not_retry_on_other_errors(self, mock_sleep):
+        """
+        The create_manifest_hanlding_race should only cover racing conditions where
+        _ManifestAlreadyExists exception is raised. We verify that on other raised errors,
+        the 2nd attempt at inserting manifests is not tried.
+        """
+        proxy_model = ProxyModel(self.orgname, self.upstream_repository, self.user)
+
+        create_fn = MagicMock(side_effect=ValueError("does not compute"))
+
+        with pytest.raises(ValueError):
+            proxy_model._create_manifest_handling_race(
+                create_fn, MagicMock(), MagicMock(digest=UBI8_8_4_DIGEST), "8.4"
+            )
+
+        assert create_fn.call_count == 1
+        mock_sleep.assert_not_called()
+
+    @pytest.mark.skipif(
+        not os.environ.get("TEST_DATABASE_URI", "").startswith("postgresql"),
+        reason="Multi-connection race requires a real PostgreSQL database",
+    )
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_concurrent_aliased_tags_all_get_created(self, create_repo):
+        """
+        In a multi-thread scenario where several threads try to create tags pointing to
+        the same manifest in the database, only one thread can insert the manifest, while
+        others must wait. Verifies that all tags are properly inserted in the database
+        at the end of execution, instead of raising _ManifestAlreadyExists.
+        """
+        repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
+        tags = ["tag-a", "tag-b", "tag-c", "tag-d", "tag-e"]
+        n = len(tags)
+
+        # all tags resolve to the same upstream manifest
+        proxy_mock = MagicMock()
+        proxy_mock.manifest_exists.return_value = UBI8_8_4_DIGEST
+        proxy_mock.get_manifest.return_value = (
+            UBI8_8_4_MANIFEST_SCHEMA2,
+            DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+        )
+
+        with patch(
+            "data.registry_model.registry_proxy_model.Proxy", MagicMock(return_value=proxy_mock)
+        ):
+            proxy_model = ProxyModel(self.orgname, self.upstream_repository, self.user)
+
+        assert proxy_model._proxy is proxy_mock
+
+        # write all changes to the database so all threads can see them
+        db.commit()
+
+        # force the race: all threads must see "no manifest"
+        real_lookup = oci.manifest.lookup_manifest
+        looked_up = threading.Barrier(n, timeout=10)
+        seen = threading.local()
+
+        saw_missing = []
+
+        def lookup_seam(*args, **kwargs):
+            found = real_lookup(*args, **kwargs)
+            if not getattr(seen, "waited", False):
+                seen.waited = True
+                saw_missing.append(found is None)  # inside the seam, next to looked_up.wait()
+                looked_up.wait()
+            return found
+
+        # In production, Redis serializes placeholder blob insertions. The tests mock that lock,
+        # so we serialize blob creation here to keep the test focused on the
+        # manifest insert race which we want to verify.
+        real_blob_lock = with_blob_lock_or_fallback
+        blob_lock = threading.Lock()
+
+        def serialized_blob_lock(digest, func, *args, **kwargs):
+            with blob_lock:
+                return real_blob_lock(digest, func, *args, **kwargs)
+
+        results, errors = {}, []
+
+        def worker(tag):
+            try:
+                with db.connection_context():
+                    results[tag] = proxy_model.get_repo_tag(repo_ref, tag)
+            except Exception as exc:
+                errors.append((tag, exc))
+
+        try:
+            with (
+                patch.object(oci.manifest, "lookup_manifest", side_effect=lookup_seam),
+                patch(
+                    "data.registry_model.registry_proxy_model.with_blob_lock_or_fallback",
+                    side_effect=serialized_blob_lock,
+                ),
+                patch("data.registry_model.registry_proxy_model.time.sleep"),
+            ):
+                threads = [threading.Thread(target=worker, args=(tag,)) for tag in tags]
+                [t.start() for t in threads]
+                [t.join(timeout=30) for t in threads]
+
+            assert not errors, errors
+            assert set(results) == set(tags)
+            assert all(tag is not None for tag in results.values())
+
+            # exactly one manifest row has been created and all tags point to the created
+            # manifest row
+            assert (
+                Manifest.select()
+                .where(
+                    Manifest.repository == repo_ref.id,
+                    Manifest.digest == UBI8_8_4_DIGEST,
+                )
+                .count()
+                == 1
+            )
+            manifest = real_lookup(repo_ref.id, UBI8_8_4_DIGEST)
+
+            # verify that all tags point to the same manifest
+            for tag in tags:
+                db_tag = oci.tag.get_current_tag(repo_ref.id, tag)
+                assert db_tag is not None
+                assert db_tag.manifest_id == manifest.id
+        finally:
+            org = user.get_namespace_user(self.orgname)
+            if org is not None:
+                assert user.delete_user(org, [])
+            db.commit()
 
 
 @pytest.mark.xdist_group("registry_proxy_serial")
