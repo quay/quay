@@ -17,35 +17,63 @@ test.describe(
   'Repository Mirroring',
   {tag: ['@repository', '@feature:REPO_MIRROR']},
   () => {
-    test('shows state warning for non-mirror repositories and form for mirror repositories', async ({
+    test('hides mirroring tab for non-mirror repositories and shows form for mirror repositories', async ({
       authenticatedPage,
       api,
     }) => {
       // Create repository in user's namespace (starts in NORMAL state)
       const repo = await api.repository(undefined, 'mirrortab');
+      const mirroringTab = authenticatedPage.getByRole('tab', {
+        name: 'Mirroring',
+      });
 
-      // Visit mirroring tab - should show state warning for NORMAL repo
+      // Deep link to the mirroring tab falls back to Information for NORMAL repo
       await authenticatedPage.goto(
         `/repository/${repo.fullName}?tab=mirroring`,
       );
       await expect(
-        authenticatedPage.getByText("This repository's state is NORMAL"),
-      ).toBeVisible();
-      await expect(
-        authenticatedPage.getByText(
-          'Use the Settings tab and change it to Mirror',
-        ),
-      ).toBeVisible();
+        authenticatedPage.getByRole('tab', {name: 'Information'}),
+      ).toHaveAttribute('aria-selected', 'true');
+      await expect(authenticatedPage.getByText('Pull Commands')).toBeVisible();
+      await expect(mirroringTab).not.toBeVisible();
 
       // Change to MIRROR state via API
       await api.setMirrorState(repo.namespace, repo.name);
 
-      // Refresh and verify form is now available
+      // Refresh and verify tab and form are now available
       await authenticatedPage.reload();
+      await expect(mirroringTab).toBeVisible();
       await expect(authenticatedPage.getByTestId('mirror-form')).toBeVisible();
       await expect(
         authenticatedPage.getByRole('heading', {name: 'External Repository'}),
       ).toBeVisible();
+    });
+
+    test('shows mirroring tab when repository state is changed in settings', async ({
+      authenticatedPage,
+      api,
+    }) => {
+      const repo = await api.repository(undefined, 'mirrorstatetab');
+      const mirroringTab = authenticatedPage.getByRole('tab', {
+        name: 'Mirroring',
+      });
+      const submitButton = authenticatedPage.getByRole('button', {
+        name: 'Submit',
+      });
+
+      await authenticatedPage.goto(`/repository/${repo.fullName}?tab=settings`);
+      await authenticatedPage
+        .getByTestId('settings-tab-repositorystate')
+        .click();
+      await expect(mirroringTab).not.toBeVisible();
+
+      await authenticatedPage.getByRole('radio', {name: 'Mirror'}).click();
+      await submitButton.click();
+      await expect(mirroringTab).toBeVisible();
+
+      await authenticatedPage.getByRole('radio', {name: 'Normal'}).click();
+      await submitButton.click();
+      await expect(mirroringTab).not.toBeVisible();
     });
 
     test('creates new mirror configuration with form validation', async ({
