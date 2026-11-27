@@ -26,8 +26,11 @@ def upgrade(op, tables, tester):
 def downgrade(op, tables, tester):
     op.execute(
         tables.logentrykind.delete().where(
-            tables.logentrykind.name
-            == op.inline_literal("start_build_trigger") | tables.logentrykind.name
-            == op.inline_literal("cancel_build")
+            tables.logentrykind.c.name.in_(
+                [
+                    "start_build_trigger",
+                    "cancel_build",
+                ]
+            )
         )
     )

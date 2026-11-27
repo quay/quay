@@ -65,17 +65,20 @@ def upgrade(op, tables, tester):
 
 
 def downgrade(op, tables, tester):
-    # Drop ManifestPullStatistics indexes
-    op.drop_index(
-        "manifestpullstatistics_repository_id_manifest_digest",
-        table_name="manifestpullstatistics",
-    )
+    # MySQL/MariaDB refuse to drop an index that backs a foreign key constraint; the indexes go
+    # away with their tables below anyway.
+    if op.get_bind().dialect.name != "mysql":
+        # Drop ManifestPullStatistics indexes
+        op.drop_index(
+            "manifestpullstatistics_repository_id_manifest_digest",
+            table_name="manifestpullstatistics",
+        )
 
-    # Drop TagPullStatistics indexes
-    op.drop_index(
-        "tagpullstatistics_repository_id_tag_name",
-        table_name="tagpullstatistics",
-    )
+        # Drop TagPullStatistics indexes
+        op.drop_index(
+            "tagpullstatistics_repository_id_tag_name",
+            table_name="tagpullstatistics",
+        )
 
     # Drop tables
     op.drop_table("manifestpullstatistics")

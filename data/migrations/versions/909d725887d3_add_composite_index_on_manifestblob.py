@@ -11,11 +11,11 @@ revision = "909d725887d3"
 down_revision = "88e64904d000"
 
 import sqlalchemy as sa
-from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy import inspect as sa_inspect
 
 
 def upgrade(op, tables, tester):
-    inspector = Inspector.from_engine(op.get_bind())
+    inspector = sa_inspect(op.get_bind())
     manifestblob_indexes = inspector.get_indexes("manifestblob")
 
     if not "manifestblob_repository_id_blob_id" in [i["name"] for i in manifestblob_indexes]:

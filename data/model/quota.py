@@ -298,7 +298,7 @@ def _next_namespace_quota_candidate_ids(last_id: int, fetch_limit: int):
                 QuotaNamespaceSize.namespace_user > last_id,
                 QuotaNamespaceSize.backfill_complete == True,  # noqa: E712
             )
-            .order_by(QuotaNamespaceSize.namespace_user)  # type: ignore[func-returns-value]
+            .order_by(QuotaNamespaceSize.namespace_user)
             .limit(fetch_limit)
             .tuples()
         )
@@ -308,7 +308,7 @@ def _next_namespace_quota_candidate_ids(last_id: int, fetch_limit: int):
         for row in (
             UserOrganizationQuota.select(UserOrganizationQuota.namespace, can_use_read_replica=True)
             .where(UserOrganizationQuota.namespace > last_id)
-            .order_by(UserOrganizationQuota.namespace)  # type: ignore[func-returns-value]
+            .order_by(UserOrganizationQuota.namespace)
             .limit(fetch_limit)
             .tuples()
         )
@@ -427,7 +427,7 @@ def get_all_repository_sizes(batch_size: int = 500, max_rows: int = 0):
                 QuotaRepositorySize.repository > last_id,
                 QuotaRepositorySize.backfill_complete == True,  # noqa: E712
             )
-            .order_by(QuotaRepositorySize.repository)  # type: ignore[func-returns-value]
+            .order_by(QuotaRepositorySize.repository)
             .limit(fetch_limit)
             .dicts()
         )

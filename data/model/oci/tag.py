@@ -1169,7 +1169,7 @@ def fetch_paginated_autoprune_repo_tags_by_number(
             )
             # TODO: Ignoring type error for now, but it seems order_by doesn't
             # return anything to be modified by offset. Need to investigate
-            .order_by(Tag.lifetime_start_ms.desc())  # type: ignore[func-returns-value]
+            .order_by(Tag.lifetime_start_ms.desc())
         )
 
         if exclude_tags and len(exclude_tags) > 0:
@@ -1225,7 +1225,7 @@ def fetch_paginated_autoprune_repo_tags_older_than_ms(
                 matches=tag_pattern_matches,
             )
         else:
-            query = query.offset(tags_offset).limit(items_per_page)  # type: ignore[func-returns-value]
+            query = query.offset(tags_offset).limit(items_per_page)
         return list(query)
     except Exception as err:
         raise Exception(
