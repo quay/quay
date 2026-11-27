@@ -317,7 +317,7 @@ jobs:
       - name: Install cosign for Cosign v3 referrer tests
         uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
         with:
-          cosign-release: v3.0.2
+          cosign-release: v3.1.5
 
       - name: Run Database auth tests (React + Legacy UI)
         env:
