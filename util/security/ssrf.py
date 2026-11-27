@@ -133,6 +133,19 @@ def get_environment_proxy_config() -> Optional[Mapping[str, Optional[str]]]:
     Matches requests environment proxy selection: lowercase variables win over
     uppercase, and ALL_PROXY/all_proxy is honoured when scheme-specific
     proxies are unset.
+
+    .. note:: Skopeo transport and ALL_PROXY
+
+        Skopeo (used for repo mirroring) uses Go's ``http.ProxyFromEnvironment``,
+        which reads only ``HTTP_PROXY``, ``HTTPS_PROXY``, and ``NO_PROXY`` —
+        it ignores ``ALL_PROXY`` entirely.  When only ``ALL_PROXY`` is set in
+        the pod environment, this function still returns a non-None config
+        (so SSRF validation correctly classifies the connection as ``PROXY``
+        for Python/requests transport), but ``SkopeoMirror.setup_env``
+        compensates by materialising ``ALL_PROXY`` into ``HTTP_PROXY`` and
+        ``HTTPS_PROXY`` before launching the Skopeo child process.  Set
+        ``HTTP_PROXY``/``HTTPS_PROXY`` explicitly to avoid relying on that
+        compensation.
     """
     http_proxy = os.environ.get("http_proxy") or os.environ.get("HTTP_PROXY")
     https_proxy = os.environ.get("https_proxy") or os.environ.get("HTTPS_PROXY")
@@ -146,6 +159,31 @@ def get_environment_proxy_config() -> Optional[Mapping[str, Optional[str]]]:
         "all_proxy": all_proxy,
         "no_proxy": no_proxy,
     }
+
+
+def _warn_if_all_proxy_only(proxy_config: Optional[Mapping[str, Optional[str]]]) -> None:
+    """Log a warning when a proxy config supplies ALL_PROXY without HTTP(S)_PROXY.
+
+    Skopeo uses Go's ``http.ProxyFromEnvironment``, which ignores ``ALL_PROXY``.
+    ``SkopeoMirror.setup_env`` compensates by materialising ``ALL_PROXY`` into
+    ``HTTP_PROXY``/``HTTPS_PROXY`` before invoking the child process, so sync
+    operations still route through the proxy.  This warning surfaces the
+    configuration pattern in logs so operators can identify it without reading
+    source code.
+    """
+    if (
+        proxy_config
+        and proxy_config.get("all_proxy")
+        and not proxy_config.get("http_proxy")
+        and not proxy_config.get("https_proxy")
+    ):
+        logger.warning(
+            "Proxy environment uses ALL_PROXY without HTTP_PROXY/HTTPS_PROXY. "
+            "Skopeo (Go) ignores ALL_PROXY; SkopeoMirror.setup_env compensates "
+            "by materialising ALL_PROXY into HTTP_PROXY/HTTPS_PROXY for the "
+            "Skopeo child process. Set HTTP_PROXY/HTTPS_PROXY explicitly to "
+            "avoid relying on this compensation."
+        )
 
 
 def resolve_proxy_config_for_ssrf(
@@ -196,6 +234,7 @@ def resolve_proxy_config_for_ssrf(
         }
 
     environment_proxy = get_environment_proxy_config()
+    _warn_if_all_proxy_only(environment_proxy)
     explicit_no_proxy = explicit_proxy.get("no_proxy") if explicit_proxy else None
     if explicit_no_proxy:
         if environment_proxy:
