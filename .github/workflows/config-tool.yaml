@@ -96,7 +96,7 @@ jobs:
           wait-on-timeout: 120
           working-directory: config-tool/pkg/lib/editor
       - name: Upload screenshots and videos
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: success() || failure()
         with:
           name: cypress-artifacts
