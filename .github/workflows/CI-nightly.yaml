@@ -90,7 +90,7 @@ jobs:
 
     - name: Install dependencies and run all tests on ${{ matrix.platform }}
       if: matrix.platform  != 'amd64'
-      uses: appleboy/ssh-action@v0.1.10
+      uses: appleboy/ssh-action@v1.2.5
       env:
         GH_REPOSITORY: ${{ github.server_url }}/${{ github.repository }}
         GH_REF: ${{ github.ref }}
