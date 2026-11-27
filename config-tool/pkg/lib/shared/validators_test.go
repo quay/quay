@@ -1,6 +1,7 @@
 package shared
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -40,6 +41,44 @@ func TestValidateIsHostname(t *testing.T) {
 				t.Errorf("ValidateIsHostname(%q) = %v, want %v. Error: %s", tt.input, ok, tt.want, err.Message)
 			}
 		})
+	}
+}
+
+func TestValidateDatabaseConnectionReportsInvalidPostgreSQLConfiguration(t *testing.T) {
+	err := ValidateDatabaseConnection(
+		Options{},
+		"postgresql://user:password@localhost:5432/quay?connect_timeout=invalid",
+		"",
+		false,
+		false,
+		"",
+		"",
+		"Database",
+	)
+	if err == nil {
+		t.Fatal("ValidateDatabaseConnection returned nil for an invalid PostgreSQL configuration")
+	}
+	if !strings.Contains(err.Error(), "invalid PostgreSQL connection configuration") {
+		t.Fatalf("expected invalid configuration context, got: %v", err)
+	}
+}
+
+func TestValidateDatabaseConnectionReportsPostgreSQLConnectionError(t *testing.T) {
+	err := ValidateDatabaseConnection(
+		Options{},
+		"postgresql://user:password@127.0.0.1:1/quay?connect_timeout=1",
+		"",
+		false,
+		false,
+		"",
+		"",
+		"Database",
+	)
+	if err == nil {
+		t.Fatal("ValidateDatabaseConnection returned nil when PostgreSQL was unreachable")
+	}
+	if !strings.Contains(err.Error(), "could not connect to PostgreSQL") {
+		t.Fatalf("expected PostgreSQL connection context, got: %v", err)
 	}
 }
 
