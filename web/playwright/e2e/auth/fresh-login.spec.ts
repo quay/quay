@@ -5,6 +5,14 @@ test.describe(
   'Fresh Login - Database auth password modal',
   {tag: ['@auth', '@auth:Database']},
   () => {
+    // These tests drive the modal themselves, so drop the fixture's
+    // auto-verify handler.
+    test.beforeEach(async ({superuserPage}) => {
+      await superuserPage.removeLocatorHandler(
+        superuserPage.locator('#fresh-password'),
+      );
+    });
+
     test(
       'shows password modal (not redirect) on fresh_login_required',
       {tag: '@superuser'},
