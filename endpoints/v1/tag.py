@@ -16,7 +16,7 @@ from endpoints.decorators import (
     check_repository_state,
     parse_repository_name,
 )
-from endpoints.v1 import check_v1_push_enabled, v1_bp
+from endpoints.v1 import check_v1_push_enabled, disallow_for_proxy_cache_org, v1_bp
 from util.audit import track_and_log
 from util.names import TAG_ERROR, TAG_REGEX
 
@@ -73,6 +73,7 @@ def get_tag(namespace_name, repo_name, tag):
 @check_repository_state
 @check_v1_push_enabled()
 @check_readonly
+@disallow_for_proxy_cache_org
 def put_tag(namespace_name, repo_name, tag):
     permission = ModifyRepositoryPermission(namespace_name, repo_name)
     repository_ref = registry_model.lookup_repository(
@@ -129,6 +130,7 @@ def put_tag(namespace_name, repo_name, tag):
 @check_repository_state
 @check_v1_push_enabled()
 @check_readonly
+@disallow_for_proxy_cache_org
 def delete_tag(namespace_name, repo_name, tag):
     permission = ModifyRepositoryPermission(namespace_name, repo_name)
     repository_ref = registry_model.lookup_repository(

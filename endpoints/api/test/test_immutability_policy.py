@@ -1,6 +1,8 @@
 import pytest
 
 from data.model import immutability
+from data.model.repository import create_repository
+from data.model.user import get_user
 from endpoints.api.immutability_policy import (
     OrgImmutabilityPolicies,
     OrgImmutabilityPolicy,
@@ -252,3 +254,39 @@ class TestOrgImmutabilityPolicyBlockedByOrgMirror:
                     assert "organization-level mirroring" in resp.json.get("error_message", "")
         finally:
             mirror.delete_instance()
+
+
+class TestImmutabilityPolicyRefusedInProxyCacheOrg:
+    def test_org_policy_write_refused(self, initialized_db, app):
+        policy = immutability.create_namespace_immutability_policy(
+            "proxyorg", {"tag_pattern": "^v1.*$", "tag_pattern_matches": True}
+        )
+
+        with client_with_identity("devtable", app) as cl:
+            for resource, method, params in [
+                (OrgImmutabilityPolicies, "POST", {"orgname": "proxyorg"}),
+                (OrgImmutabilityPolicy, "PUT", {"orgname": "proxyorg", "policy_uuid": policy.uuid}),
+            ]:
+                resp = conduct_api_call(cl, resource, method, params, {"tagPattern": "^v2.*$"}, 400)
+                assert "proxy cache" in resp.json["error_message"]
+
+        policies = immutability.get_namespace_immutability_policies("proxyorg")
+        assert [(p.uuid, p.tag_pattern) for p in policies] == [(policy.uuid, "^v1.*$")]
+
+    def test_repo_policy_write_refused(self, initialized_db, app):
+        create_repository("proxyorg", "cached", get_user("devtable"))
+        policy = immutability.create_repository_immutability_policy(
+            "proxyorg", "cached", {"tag_pattern": "^v1.*$", "tag_pattern_matches": True}
+        )
+
+        with client_with_identity("devtable", app) as cl:
+            params = {"repository": "proxyorg/cached", "policy_uuid": policy.uuid}
+            for resource, method in [
+                (RepositoryImmutabilityPolicies, "POST"),
+                (RepositoryImmutabilityPolicy, "PUT"),
+            ]:
+                resp = conduct_api_call(cl, resource, method, params, {"tagPattern": "^v2.*$"}, 400)
+                assert "proxy cache" in resp.json["error_message"]
+
+        policies = immutability.get_repository_immutability_policies("proxyorg", "cached")
+        assert [(p.uuid, p.tag_pattern) for p in policies] == [(policy.uuid, "^v1.*$")]

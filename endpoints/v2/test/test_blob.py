@@ -19,13 +19,17 @@ from data.model.storage import get_layer_path
 from data.registry_model import registry_model
 from data.registry_model.registry_proxy_model import ProxyModel
 from digest.digest_tools import sha256_digest
-from endpoints.test.shared import conduct_call
+from endpoints.test.shared import conduct_call, gen_basic_auth
 from image.docker.schema2 import DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from proxy.fixtures import *  # noqa: F401, F403
 from test.fixtures import *
 from util.bytes import Bytes
-from util.security.registry_jwt import build_context_and_subject, generate_bearer_token
+from util.security.registry_jwt import (
+    build_context_and_subject,
+    decode_bearer_token,
+    generate_bearer_token,
+)
 
 HELLO_WORLD_DIGEST = "sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4"
 HELLO_WORLD_SCHEMA2_MANIFEST_JSON = r"""{
@@ -807,3 +811,49 @@ def test_blob_upload_when_pushes_disabled(client, app):
 
     # re-enable pushes, since the setting persists across all tests
     realapp.config["DISABLE_PUSHES"] = False
+
+
+def test_blob_upload_refused_after_org_becomes_proxy_cache(client, app):
+    # The push token and the upload predate the org's proxy cache config.
+    params = {
+        "service": realapp.config["SERVER_HOSTNAME"],
+        "scope": "repository:buynlarge/orgrepo:pull,push",
+    }
+    headers = {"Authorization": gen_basic_auth("devtable", "password")}
+    resp = conduct_call(
+        client, "v2.generate_registry_jwt", url_for, "GET", params, {}, 200, headers=headers
+    )
+    token = resp.json["token"]
+    decoded = decode_bearer_token(token, instance_keys, realapp.config)
+    assert sorted(decoded["access"][0]["actions"]) == ["pull", "push"]
+
+    headers = {"Authorization": "Bearer %s" % token}
+    params = {"repository": "buynlarge/orgrepo"}
+    resp = conduct_call(
+        client, "v2.start_blob_upload", url_for, "POST", params, expected_code=202, headers=headers
+    )
+    upload_params = dict(params, upload_uuid=resp.headers["Docker-Upload-UUID"])
+
+    model.proxy_cache.create_proxy_cache_config("buynlarge", "docker.io")
+
+    digest = "sha256:" + hashlib.sha256(b"a").hexdigest()
+    calls = [
+        ("v2.start_blob_upload", "POST", params),
+        ("v2.upload_chunk", "PATCH", upload_params),
+        ("v2.monolithic_upload_or_last_chunk", "PUT", dict(upload_params, digest=digest)),
+    ]
+    for resource, method, call_params in calls:
+        resp = conduct_call(
+            client,
+            resource,
+            url_for,
+            method,
+            call_params,
+            expected_code=401,
+            headers=dict(headers),
+            raw_body=b"a",
+        )
+        assert "WWW-Authenticate" in resp.headers
+
+    repository = model.repository.get_repository("buynlarge", "orgrepo")
+    assert model.oci.blob.get_repository_blob_by_digest(repository, digest) is None

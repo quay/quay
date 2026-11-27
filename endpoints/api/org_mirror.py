@@ -25,6 +25,7 @@ from endpoints.api import (
     allow_if_global_readonly_superuser,
     allow_if_superuser,
     allow_if_superuser_with_full_access,
+    check_proxy_cache_org,
     log_action,
     nickname,
     path_param,
@@ -407,6 +408,7 @@ class OrgMirrorConfig(ApiResource):
         Update organization mirror configuration.
         """
         require_org_admin(orgname)
+        check_proxy_cache_org(orgname)
 
         try:
             org = model.organization.get_organization(orgname)
@@ -588,6 +590,7 @@ class OrgMirrorSyncNow(ApiResource):
         Returns 204 on success, 404 if config not found or already syncing.
         """
         require_org_admin(orgname)
+        check_proxy_cache_org(orgname)
 
         try:
             org = model.organization.get_organization(orgname)
