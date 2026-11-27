@@ -407,6 +407,29 @@ def with_blob_lock_or_fallback(digest, func, *args, **kwargs):
         _blob_lock_fallback.reset(token)
 
 
+def with_blob_lock(digest, func, *args, lock_ttl=30, auto_renewal=False, **kwargs):
+    """
+    Execute a function under the BLOB_DELETE GlobalLock; never runs func without it.
+
+    Unlike with_blob_lock_or_fallback, there is no fallback: if another holder still has the lock
+    after BLOB_DELETE_LOCK_ACQUIRE_TIMEOUT, LockAcquireTimeout propagates (the registry returns a
+    503 that clients retry), and if Redis is unavailable LockNotAcquiredException propagates. This
+    is for critical sections, such as a blob storage finalize plus the DB commit that relies on
+    it, where running unlocked reopens the finalize/GC race the lock exists to close.
+
+    func is called with skip_lock=True and lock=<the held GlobalLock>, so it can check that it
+    still owns the lock before doing anything that must not happen after the lease is lost.
+    """
+    lock = GlobalLock(
+        f"BLOB_DELETE_{digest}",
+        lock_ttl=lock_ttl,
+        auto_renewal=auto_renewal,
+        blocking_timeout=BLOB_DELETE_LOCK_ACQUIRE_TIMEOUT,
+    )
+    with lock:
+        return func(*args, skip_lock=True, lock=lock, **kwargs)
+
+
 def _get_or_create_blob_with_lock(digest, lock_acquired=True, may_create=True, **blob_attrs):
     """
     Gets or creates the ImageStorage reference for the provided blob digest. If the reference to the blob

@@ -714,6 +714,44 @@ def test_create_manifest_cannot_load_config_blob(initialized_db):
         )
 
 
+def test_create_manifest_missing_config_blob_object(initialized_db):
+    """
+    The DB row for the config blob exists, but its CAS object does not, so the real
+    retriever fails to load it. This mirrors the symptom that reaches the digest PUT
+    endpoint: a CreateManifestException carrying the config-blob failure message.
+    """
+    repository = create_repository("devtable", "newrepo", None)
+
+    layer_json = json.dumps(
+        {
+            "config": {},
+            "rootfs": {"type": "layers", "diff_ids": []},
+            "history": [
+                {
+                    "created": "2018-04-03T18:37:09.284840891Z",
+                    "created_by": "do something",
+                },
+            ],
+        }
+    )
+
+    # Add a blob containing the config, then remove only its CAS object so the DB
+    # record still exists but the content cannot be retrieved.
+    config_blob, config_digest = _populate_blob(layer_json)
+    storage.remove(["local_us"], get_layer_path(config_blob))
+
+    random_data = "hello world"
+    _, random_digest = _populate_blob(random_data)
+
+    builder = DockerSchema2ManifestBuilder()
+    builder.set_config_digest(config_digest, len(layer_json.encode("utf-8")))
+    builder.add_layer(random_digest, len(random_data.encode("utf-8")))
+    manifest = builder.build()
+
+    with pytest.raises(CreateManifestException, match="Could not load config blob for manifest"):
+        get_or_create_manifest(repository, manifest, storage, raise_on_error=True)
+
+
 def test_get_or_create_manifest_with_subject(initialized_db):
     def generate_random_data_for_layer():
         charset = string.ascii_uppercase + string.ascii_lowercase + string.digits
