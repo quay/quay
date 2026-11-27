@@ -752,9 +752,11 @@ def _delete_tag(tag, now_ms, expire_cosign=True):
         return tag
 
 
-def delete_tags_for_manifest(manifest):
+def delete_tags_for_manifest(manifest, allow_hidden=False):
     """
-    Deletes all tags pointing to the given manifest.
+    Deletes alive visible tags pointing to the given manifest.
+
+    If allow_hidden is True, includes alive hidden tags as well.
 
     Returns the list of tags deleted.
     Raises ImmutableTagException if any tag is immutable.
@@ -764,7 +766,9 @@ def delete_tags_for_manifest(manifest):
     with db_transaction():
         # Read alive tags inside the transaction so a tag retargeted/created onto
         # this manifest between an earlier read and Cosign expiry cannot be missed.
-        query = filter_to_alive_tags(Tag.select().where(Tag.manifest == manifest))
+        query = filter_to_alive_tags(
+            Tag.select().where(Tag.manifest == manifest), allow_hidden=allow_hidden
+        )
         tags = list(query)
 
         if features.IMMUTABLE_TAGS:
