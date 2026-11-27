@@ -63,19 +63,24 @@ test.describe('Feature Name', {tag: ['@critical', '@repository']}, () => {
 
 ### Tag Categories
 
-| Category     | Format                             | Example                | Purpose                                                                   |
-| ------------ | ---------------------------------- | ---------------------- | ------------------------------------------------------------------------- |
-| JIRA         | `@PROJQUAY-####`                   | `@PROJQUAY-1234`       | Link to JIRA ticket                                                       |
-| Priority     | `@critical`, `@smoke`              | `@critical`            | Test importance                                                           |
-| Feature      | `@repository`                      | `@repository`          | Feature area                                                              |
-| Config       | `@config:BILLING`                  | `@config:OIDC`         | Required config                                                           |
-| Feature Flag | `@feature:PROXY_CACHE`             | `@feature:REPO_MIRROR` | Required feature                                                          |
-| Container    | `@container`                       | `@container`           | Requires registry image tooling (auto-skip)                               |
-| Superuser    | `@superuser`                       | `@superuser`           | Uses superuser-authenticated fixtures or local fixtures backed by them    |
-| Webhook      | `@webhook`                         | `@webhook`             | Uses the webhook receiver fixture or helper                               |
-| LDAP smoke   | `@ldap-smoke`                      | `@ldap-smoke`          | Run in the GHA LDAP phase of ci-web.yaml; keep the set small              |
-| Upgrade      | `@upgrade-seed`, `@upgrade-verify` | `@upgrade-seed`        | Reserved for the operator-upgrade lane (see below) — do NOT use elsewhere |
-| Branding     | `@redhat-branding`                 | `@redhat-branding`     | Red Hat branding verification; downstream OCP lanes only (see below) |
+| Category     | Format                                       | Example                | Purpose                                                                   |
+| ------------ | -------------------------------------------- | ---------------------- | ------------------------------------------------------------------------- |
+| JIRA         | `@PROJQUAY-####`                             | `@PROJQUAY-1234`       | Link to JIRA ticket                                                       |
+| Priority     | `@critical`, `@smoke`                        | `@critical`            | Test importance                                                           |
+| Feature      | `@repository`                                | `@repository`          | Feature area                                                              |
+| Config       | `@config:BILLING`                            | `@config:OIDC`         | Required config                                                           |
+| Feature Flag | `@feature:PROXY_CACHE`                       | `@feature:REPO_MIRROR` | Required feature                                                          |
+| Container    | `@container`                                 | `@container`           | Requires registry image tooling (auto-skip)                               |
+| Superuser    | `@superuser`                                 | `@superuser`           | Uses superuser-authenticated fixtures or local fixtures backed by them    |
+| Webhook      | `@webhook`                                   | `@webhook`             | Uses the webhook receiver fixture or helper                               |
+| Auth         | `@auth:Database`, `@auth:LDAP`, `@auth:OIDC` | `@auth:Database`       | Runs only under that `AUTHENTICATION_TYPE` (auto-skip otherwise)          |
+| LDAP smoke   | `@ldap-smoke`                                | `@ldap-smoke`          | Run in the GHA LDAP phase of ci-web.yaml; keep the set small              |
+| Upgrade      | `@upgrade-seed`, `@upgrade-verify`           | `@upgrade-seed`        | Reserved for the operator-upgrade lane (see below) — do NOT use elsewhere |
+| Branding     | `@redhat-branding`                           | `@redhat-branding`     | Red Hat branding verification; downstream OCP lanes only (see below)      |
+
+ci-web.yaml selects its LDAP phase by tag: `--grep "@auth:LDAP|@ldap-smoke"`.
+A test that only works with Database auth but sits under an `@ldap-smoke`
+describe runs under LDAP and likely fails unless it is tagged `@auth:Database`.
 
 #### Operator-upgrade specs (`@upgrade-seed` / `@upgrade-verify`)
 
@@ -170,8 +175,8 @@ npx playwright test --grep "(?=.*@critical)(?=.*@repository)"
 ### Required Usage Tags
 
 Tests that use `superuserPage`, `superuserRequest`, `superuserApi`,
-`superuserContext`, `freshUser`, or spec-local fixtures backed by those fixtures
-must include `@superuser`.
+`superuserContext`, `freshUser`, `isolatedUser`, or spec-local fixtures backed by
+those fixtures must include `@superuser`.
 
 Tests that use the `webhook` fixture or instantiate `WebhookReceiver` must
 include `@webhook`.
@@ -274,6 +279,27 @@ test('custom login scenario', async ({page, request}) => {
 });
 ```
 
+### Test User Credentials
+
+`TEST_USERS` from `global-setup.ts` resolves per auth mode: its `admin`, `user`
+and `readonly` getters read `QUAY_AUTH_TYPE`, which globalSetup sets from
+Quay's `/config`, so static and module-level imports get the right users
+(`admin`, `admin_oidc`, `admin_ldap`). Before globalSetup runs (test discovery,
+`--list`) it falls back to the Database users.
+
+`getTestUsers(config?)` from `fixtures.ts` is the explicit form: it picks the
+set from `config.config.AUTHENTICATION_TYPE`, for code that already holds
+`quayConfig`:
+
+```typescript
+import {test, getTestUsers} from '../../fixtures';
+
+test('uses the admin namespace', async ({quayConfig}) => {
+  const users = getTestUsers(quayConfig);
+  // users.admin.username is 'admin' under Database, 'admin_ldap' under LDAP
+});
+```
+
 ## Test Data Creation with the `api` Fixture
 
 The `api` fixture provides methods to create test resources with **automatic cleanup** after each test (even on failure). Resources are deleted in reverse creation order.
@@ -341,6 +367,30 @@ test('admin creates user', async ({superuserApi}) => {
 });
 ```
 
+### Isolated Users (`isolatedUser`)
+
+Use `isolatedUser(slot)` when a test needs its own user under both Database and
+LDAP auth. It returns `{user, api}`, where `api` is signed in as that user:
+
+```typescript
+test('sets a user quota', {tag: '@superuser'}, async ({isolatedUser}) => {
+  const {user} = await isolatedUser('quota');
+});
+```
+
+Slots are the `IsolatedUserSlot` type in `fixtures.ts`: `quota`, `prune-count`,
+`prune-age`, `prune-both`, `logout-success`, `logout-error`, `logout-access`,
+`metadata-submit`, `metadata-skip`. Each slot belongs to one test: a new test
+adds its own slot rather than reusing one, because under LDAP a slot is a single
+shared account.
+
+- **Database:** creates a unique user and deletes it after the test.
+- **LDAP:** signs in the slot's pre-seeded identity (`LDAP_ISOLATED_USERS`); it is
+  never deleted. LDAP accounts cannot be created through the API, so a new slot
+  needs an entry in `IsolatedUserSlot`, `LDAP_ISOLATED_USERS` and
+  `local-dev/ldap/base.ldif`.
+- **OIDC:** not supported; the call throws.
+
 ### Anti-Pattern: Manual Cleanup
 
 Avoid `beforeEach`/`afterEach` with manual `try/catch` cleanup. The `api` fixture handles cleanup automatically, is parallel-safe, and guarantees reverse-order deletion. See existing tests for the legacy pattern if maintaining older specs.
@@ -356,47 +406,40 @@ Avoid `beforeEach`/`afterEach` with manual `try/catch` cleanup. The `api` fixtur
 
 Tests that call `/api/v1/signout` require special handling because Quay invalidates **ALL sessions** for that user server-side (`invalidate_all_sessions(user)`). This breaks parallel tests using the same user.
 
-### Solution: Unique Temporary Users
+### Solution: One Isolated User per Test
 
-Create a custom fixture that provisions a unique user per test:
+Wrap `isolatedUser` in a fixture that opens a page in a new browser context,
+signed in as the slot's user. Give each test its own slot:
 
 ```typescript
-import {test as base, expect, uniqueName} from '../../fixtures';
+import {test as base, expect, type IsolatedUserSlot} from '../../fixtures';
+import type {BrowserContext, Page} from '@playwright/test';
 import {ApiClient} from '../../utils/api';
 
-const test = base.extend<{logoutPage: Page; logoutUsername: string}>({
-  logoutUsername: async ({}, use) => {
-    await use(uniqueName('logout'));
-  },
+const test = base.extend<{
+  logoutUser: (
+    slot: IsolatedUserSlot,
+  ) => Promise<{page: Page; username: string}>;
+}>({
+  logoutUser: async ({browser, isolatedUser}, use) => {
+    const contexts: BrowserContext[] = [];
 
-  logoutPage: async ({browser, superuserRequest, logoutUsername}, use) => {
-    const password = 'testpassword123';
-    const email = `${logoutUsername}@example.com`;
+    await use(async (slot) => {
+      const {user} = await isolatedUser(slot);
+      const context = await browser.newContext();
+      contexts.push(context);
+      await new ApiClient(context.request).signIn(user.username, user.password);
+      return {page: await context.newPage(), username: user.username};
+    });
 
-    // Create temporary user
-    const superApi = new ApiClient(superuserRequest);
-    await superApi.createUser(logoutUsername, password, email);
-
-    // Login as temporary user
-    const context = await browser.newContext();
-    const api = new ApiClient(context.request);
-    await api.signIn(logoutUsername, password);
-
-    const page = await context.newPage();
-    await use(page);
-
-    // Cleanup
-    await page.close();
-    await context.close();
-    try {
-      await superApi.deleteUser(logoutUsername);
-    } catch {
-      // Already deleted
+    for (const context of contexts) {
+      await context.close();
     }
   },
 });
 
-test('logs out successfully', async ({logoutPage}) => {
+test('logs out successfully', {tag: '@superuser'}, async ({logoutUser}) => {
+  const {page} = await logoutUser('logout-success');
   // Safe to logout - won't affect other tests
 });
 ```
