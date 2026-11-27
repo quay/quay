@@ -1,10 +1,12 @@
 import json
+import os
 from datetime import datetime
 from unittest.mock import Mock
 
 import pytest
 from mock import patch
 
+from app import proxy_cache_blob_queue
 from auth.scopes import READ_REPO
 from auth.test.mock_oidc_server import MOCK_PUBLIC_KEY, generate_mock_oidc_token
 from data import model
@@ -71,6 +73,7 @@ from data.model.user import (
     verify_robot,
 )
 from data.queue import WorkQueue
+from digest.digest_tools import sha256_digest
 from test.fixtures import *
 from test.helpers import check_transitive_modifications
 from util.security.instancekeys import InstanceKeys
@@ -552,6 +555,163 @@ def test_delete_namespace_cleans_up_notifications(initialized_db):
         QuotaNotificationState.select().where(QuotaNotificationState.namespace == user.id).count()
         == 0
     )
+
+
+def _enqueue_proxy_jobs(user):
+    """
+    Helper that enqueues proxy jobs, returning created repos and digests to the caller.
+    """
+    repos = []
+    for i in range(3):
+        repo = model.repository.create_repository(
+            user.username,
+            f"repo-{i}",
+            None,
+        )
+        repos.append(repo)
+
+    digests = [sha256_digest(os.urandom(1024)) for _ in range(3)]
+
+    # enqueue one digest per repository for proxying
+    for i in range(3):
+        assert proxy_cache_blob_queue.put(
+            [
+                "foobar",
+                str(repos[i].id),
+                digests[i],
+            ],
+            json.dumps(
+                {
+                    "digest": digests[i],
+                    "repo_id": repos[i].id,
+                    "username": "foobar",
+                    "namespace": "foobar",
+                },
+            ),
+        )
+
+    return repos, digests
+
+
+def test_delete_namespace_removes_all_proxy_cache_jobs(initialized_db):
+    """
+    Verifies that after deletion of a namespace all proxy-cache jobs for that organization
+    are also deleted.
+    """
+
+    def create_transaction(db):
+        return db.transaction()
+
+    # create a user
+    user = create_user_noverify("foobar", "foo@example.com", email_required=False)
+
+    # create some repositories and digests and enqueue jobs
+    repos, digests = _enqueue_proxy_jobs(user)
+
+    queue = WorkQueue("testgcnamespace", create_transaction)
+    marker_id = mark_namespace_for_deletion(user, [proxy_cache_blob_queue], queue)
+
+    # delete the namespace and make sure it's deleted
+    with check_transitive_modifications():
+        delete_namespace_via_marker(marker_id, [proxy_cache_blob_queue])
+
+    with pytest.raises(User.DoesNotExist):
+        User.get(id=user.id)
+
+    # verify that all jobs have been removed are no longer active
+    for i in range(3):
+        assert not proxy_cache_blob_queue.alive(["foobar", str(repos[i].id), digests[i]])
+
+
+def test_purge_proxy_cache_jobs_from_already_marked_namespace(initialized_db):
+    """
+    Verifies that proxy jobs get cleaned on a namespace that has already been marked to be deleted.
+    """
+
+    def create_transaction(db):
+        return db.transaction()
+
+    # create a user
+    user = create_user_noverify("foobar", "foo@example.com", email_required=False)
+
+    # create some repositories and digests and enqueue jobs
+    repos, digests = _enqueue_proxy_jobs(user)
+
+    queue = WorkQueue("testgcnamespace", create_transaction)
+    # don't pass the proxy_cache_blob_queue in the list of queues
+    # jobs should live through this deletion
+    marker_id = mark_namespace_for_deletion(user, [], queue)
+
+    # assert that jobs still exist
+    for i in range(3):
+        assert proxy_cache_blob_queue.alive(["foobar", str(repos[i].id), digests[i]])
+
+    # attempt to clean up via marker
+    with check_transitive_modifications():
+        delete_namespace_via_marker(marker_id, [])
+
+    with pytest.raises(User.DoesNotExist):
+        User.get(id=user.id)
+
+    # verify that all jobs have been removed are no longer active
+    for i in range(3):
+        assert not proxy_cache_blob_queue.alive(["foobar", str(repos[i].id), digests[i]])
+
+
+@patch("features.PROXY_CACHE", True)
+def test_purging_of_proxy_jobs_in_one_namespace_leaves_other_namespace_jobs_untouched(
+    initialized_db,
+):
+    """
+    Verifies that purging of proxy jobs in a specific namespace does not touch other proxy jobs
+    in other namespaces. Specifically, if namespace "foo" gets deleted and then immediately
+    recreated after deletion, jobs enqueued under old "foo" must be deleted, but jobs under
+    new "foo" must stay.
+    """
+
+    def create_transaction(db):
+        return db.transaction()
+
+    # create initial user "foobar" and enqueue some jobs
+    user = create_user_noverify("foobar", "foo@example.com", email_required=False)
+    old_foobar_repos, old_foobar_digests = _enqueue_proxy_jobs(user)
+
+    # mark initial "foobar" for deletion
+    queue = WorkQueue("testgcnamespace", create_transaction)
+    marker_id = mark_namespace_for_deletion(user, [], queue)
+
+    # at this point user "foobar" is renamed to a uuid, so create a new user named
+    # "foobar" and enqueue some jobs
+    user = create_user_noverify("foobar", "foo@example.com", email_required=False)
+    new_foobar_repos, new_foobar_digests = _enqueue_proxy_jobs(user)
+
+    # at this point we should have 6 items in the QueueItem table
+    assert (
+        QueueItem.select()
+        .where(QueueItem.queue_name.contains(proxy_cache_blob_queue._queue_name))
+        .count()
+        == 6
+    )
+
+    # delete the first "foobar" via the marker
+    with check_transitive_modifications():
+        delete_namespace_via_marker(marker_id, [])
+
+    # assert that only 3 jobs remain
+    assert (
+        QueueItem.select()
+        .where(QueueItem.queue_name.contains(proxy_cache_blob_queue._queue_name))
+        .count()
+        == 3
+    )
+
+    # assert that jobs for original "foobar" do not exist
+    for repo, digest in zip(old_foobar_repos, old_foobar_digests):
+        assert not proxy_cache_blob_queue.alive(["foobar", str(repo.id), digest])
+
+    # assert that jobs for the new "foobar" exist
+    for repo, digest in zip(new_foobar_repos, new_foobar_digests):
+        assert proxy_cache_blob_queue.alive(["foobar", str(repo.id), digest])
 
 
 def test_delete_namespace_bulk_state_update(initialized_db):

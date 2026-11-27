@@ -1,8 +1,10 @@
+import os
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from app import storage
+from data import model
 from data.model.blob import store_blob_record_and_temp_link
 from data.model.organization import create_organization
 from data.model.proxy_cache import create_proxy_cache_config
@@ -79,6 +81,46 @@ def test_process_queue_item_with_none_username(proxy_cache_blob_worker, initiali
     with patch.object(proxy_cache_blob_worker, "_should_download_blob", return_value=False):
         # This should not raise an exception
         proxy_cache_blob_worker.process_queue_item(job_details)
+
+
+def test_process_queue_with_deleted_repository(proxy_cache_blob_worker, initialized_db):
+    """
+    Verifies that proxy_cache worker does not enqueue blobs for deleted repositories.
+    """
+    # setup test data
+    orgname = "testorg"
+    user = get_user("devtable")
+    org = create_organization(orgname, f"{orgname}@devtable.com", user)
+    org.save()
+
+    # create proxy organization
+    create_proxy_cache_config(
+        org_name=orgname,
+        upstream_registry="quay.io",
+        expiration_s=3600,
+    )
+
+    # create test repo and delete it immediately
+    repo = create_repository(orgname, "test_repo", user)
+    assert repo is not None
+    repo_id = repo.id
+
+    # delete the repo
+    assert model.gc.purge_repository(repo, force=True)
+
+    # job details
+    job_details = {
+        "repo_id": repo_id,
+        "namespace": orgname,
+        "digest": sha256_digest(os.urandom(1024)),
+        "username": None,
+    }
+
+    with patch("workers.proxycacheblobworker.ProxyModel") as mock_proxy_model:
+        proxy_cache_blob_worker.process_queue_item(job_details)
+
+    # assert that mock_proxy_model is not called
+    mock_proxy_model.assert_not_called()
 
 
 def test_process_queue_item_with_username(proxy_cache_blob_worker, initialized_db):
