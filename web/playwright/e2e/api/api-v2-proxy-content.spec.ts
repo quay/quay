@@ -196,5 +196,87 @@ test.describe(
         await request.dispose();
       }
     });
+
+    test('concurrent first pulls of different tags from a new upstream repo must all succeed', async ({
+      playwright,
+      userContext,
+    }) => {
+      // using a completely different repository here to not clash with previous tests
+      const upstreamRepo = 'prometheus/node-exporter';
+      const request = await playwright.request.newContext({
+        ignoreHTTPSErrors: true,
+        ...(REQUEST_PROXY ? {proxy: REQUEST_PROXY} : {}),
+      });
+
+      try {
+        // check upstream tags
+        const upstream = await request.get(
+          `https://quay.io/api/v1/repository/${upstreamRepo}/tag/?limit=20&onlyActiveTags=true`,
+          {headers: {'X-Requested-With': 'XMLHttpRequest'}},
+        );
+
+        expect(upstream.status()).toBe(200);
+
+        // grab 6 tags
+        const tagNames: string[] = [
+          ...new Set<string>(
+            (await upstream.json()).tags.map((t: {name: string}) => t.name),
+          ),
+        ].slice(0, 6);
+        expect(tagNames.length).toBeGreaterThan(1);
+
+        // generate token
+        const tokenFor = () =>
+          getV2Token(
+            request,
+            API_URL,
+            USERNAME,
+            PASSWORD,
+            `repository:${orgName}/${upstreamRepo}:pull`,
+          );
+
+        // generate headers
+        const headers = {
+          accept: [
+            'application/vnd.docker.distribution.manifest.v2+json',
+            'application/vnd.docker.distribution.manifest.list.v2+json',
+            'application/vnd.oci.image.index.v1+json',
+            'application/vnd.oci.image.manifest.v1+json',
+          ].join(', '),
+        };
+
+        // no tags exist locally and neither does the repository, so every request
+        // actually races to create the repo
+        const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+        const responses = await Promise.all(
+          tagNames.map(async (tag) => {
+            const v2Token = await tokenFor();
+            return request.get(
+              `${API_URL}/v2/${orgName}/${upstreamRepo}/manifests/${tag}`,
+              {headers: {...headers, authorization: `Bearer ${v2Token}`}},
+            );
+          }),
+        );
+
+        expect(responses.map((r) => r.status())).toEqual(
+          tagNames.map(() => 200),
+        );
+
+        // every tag now has to be locally stored
+        const tagResponse = await userContext.request.get(
+          `${API_URL}/api/v1/repository/${orgName}/${upstreamRepo}/tag/?onlyActiveTags=true&limit=100`,
+          {headers: {'X-Requested-With': 'XMLHttpRequest'}},
+        );
+        expect(tagResponse.status()).toBe(200);
+
+        // map locally available tags to upstream tags
+        const localTags: string[] = (await tagResponse.json()).tags.map(
+          (t: {name: string}) => t.name,
+        );
+        expect(localTags).toEqual(expect.arrayContaining(tagNames));
+      } finally {
+        await request.dispose();
+      }
+    });
   },
 );
