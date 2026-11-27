@@ -60,7 +60,7 @@ describe('useNotifications', () => {
     });
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.notifications).toHaveLength(3);
-    expect(result.current.paginatedNotifications).toHaveLength(3);
+    expect(result.current.filteredNotifications).toHaveLength(3);
   });
 
   it('filters notifications by event type', async () => {
@@ -77,7 +77,8 @@ describe('useNotifications', () => {
         status: [],
       });
     });
-    expect(result.current.paginatedNotifications).toHaveLength(2);
+    expect(result.current.notifications).toHaveLength(3);
+    expect(result.current.filteredNotifications).toHaveLength(2);
   });
 
   it('filters notifications by enabled status', async () => {
@@ -97,8 +98,8 @@ describe('useNotifications', () => {
         status: [NotifiationStatus.enabled],
       });
     });
-    expect(result.current.paginatedNotifications).toHaveLength(1);
-    expect(result.current.paginatedNotifications[0].uuid).toBe('n1');
+    expect(result.current.filteredNotifications).toHaveLength(1);
+    expect(result.current.filteredNotifications[0].uuid).toBe('n1');
   });
 
   it('filters by disabled status', async () => {
@@ -118,7 +119,7 @@ describe('useNotifications', () => {
         status: [NotifiationStatus.disabled],
       });
     });
-    expect(result.current.paginatedNotifications).toHaveLength(2);
+    expect(result.current.filteredNotifications).toHaveLength(2);
   });
 
   it('resetFilter clears all filters', async () => {
@@ -135,11 +136,11 @@ describe('useNotifications', () => {
         status: [],
       });
     });
-    expect(result.current.paginatedNotifications).toHaveLength(2);
+    expect(result.current.filteredNotifications).toHaveLength(2);
     act(() => {
       result.current.resetFilter();
     });
-    expect(result.current.paginatedNotifications).toHaveLength(3);
+    expect(result.current.filteredNotifications).toHaveLength(3);
   });
 
   it('resetFilter clears a specific field', async () => {
@@ -157,5 +158,114 @@ describe('useNotifications', () => {
       result.current.resetFilter('event');
     });
     expect(result.current.filter.event).toEqual([]);
+  });
+
+  it('combines event and status filters', async () => {
+    vi.mocked(fetchNotifications).mockResolvedValueOnce(
+      mockNotifications as any,
+    );
+    vi.mocked(isNotificationEnabled).mockImplementation(
+      (notification: any) => notification.uuid !== 'n3',
+    );
+    const {result} = renderHook(() => useNotifications('myorg', 'myrepo'), {
+      wrapper,
+    });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    act(() => {
+      result.current.setFilter({
+        event: [NotificationEventType.repoPush],
+        status: [NotifiationStatus.enabled],
+      });
+    });
+    expect(result.current.filteredNotifications.map((n) => n.uuid)).toEqual([
+      'n1',
+    ]);
+  });
+
+  it('returns every matching notification without paginating', async () => {
+    const notifications = Array.from({length: 25}, (_, index) => ({
+      uuid: `n${index}`,
+      event: 'repo_push',
+      config: {},
+      event_config: {},
+    }));
+    vi.mocked(fetchNotifications).mockResolvedValueOnce(notifications as any);
+    const {result} = renderHook(() => useNotifications('myorg', 'myrepo'), {
+      wrapper,
+    });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    act(() => {
+      result.current.setFilter({
+        event: [NotificationEventType.repoPush],
+        status: [],
+      });
+    });
+    expect(result.current.filteredNotifications).toHaveLength(25);
+  });
+
+  it('keeps the active filtered collection stable across rerenders', async () => {
+    vi.mocked(fetchNotifications).mockResolvedValueOnce(
+      mockNotifications as any,
+    );
+    const {result, rerender} = renderHook(
+      () => useNotifications('myorg', 'myrepo'),
+      {wrapper},
+    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    act(() => {
+      result.current.setFilter({
+        event: [NotificationEventType.repoPush],
+        status: [],
+      });
+    });
+    const filteredNotifications = result.current.filteredNotifications;
+
+    rerender();
+
+    expect(result.current.filteredNotifications).toBe(filteredNotifications);
+  });
+
+  it('returns a stable empty filtered collection while loading', () => {
+    vi.mocked(fetchNotifications).mockImplementation(
+      () => new Promise(() => undefined),
+    );
+    const {result, rerender} = renderHook(
+      () => useNotifications('myorg', 'myrepo'),
+      {wrapper},
+    );
+    const filteredNotifications = result.current.filteredNotifications;
+
+    expect(filteredNotifications).toEqual([]);
+    rerender();
+    expect(result.current.filteredNotifications).toBe(filteredNotifications);
+  });
+
+  it('returns a stable empty filtered collection after an initial fetch error', async () => {
+    vi.mocked(fetchNotifications).mockRejectedValueOnce(
+      new Error('notifications unavailable'),
+    );
+    const {result, rerender} = renderHook(
+      () => useNotifications('myorg', 'myrepo'),
+      {wrapper},
+    );
+
+    await waitFor(() => expect(result.current.error).toBe(true));
+    const unfilteredNotifications = result.current.filteredNotifications;
+    expect(unfilteredNotifications).toEqual([]);
+
+    rerender();
+    expect(result.current.filteredNotifications).toBe(unfilteredNotifications);
+
+    act(() => {
+      result.current.setFilter({
+        event: [NotificationEventType.repoPush],
+        status: [NotifiationStatus.disabled],
+      });
+    });
+    const filteredNotifications = result.current.filteredNotifications;
+    expect(filteredNotifications).toEqual([]);
+
+    rerender();
+    expect(result.current.filteredNotifications).toBe(filteredNotifications);
   });
 });
