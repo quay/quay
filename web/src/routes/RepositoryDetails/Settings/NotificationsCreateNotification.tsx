@@ -33,6 +33,9 @@ import CreateQuayNotification from './NotificationsCreateNotificationQuay';
 import CreateSlackNotification from './NotificationsCreateNotificationSlack';
 import CreateWebhookNotification from './NotificationsCreateNotificationWebhook';
 import RepoEventExpiry from './RepoEventExpiry';
+import VulnerabilityEventConfig, {
+  isValidTagRegex,
+} from './VulnerabilityEventConfig';
 import {CreateTeamModal} from 'src/routes/OrganizationsList/Organization/Tabs/DefaultPermissions/createPermissionDrawer/CreateTeamModal';
 
 export default function CreateNotification(props: CreateNotificationProps) {
@@ -52,7 +55,19 @@ export default function CreateNotification(props: CreateNotificationProps) {
     if (event?.type == NotificationEventType.imageExpiry) {
       return eventConfig?.days != undefined && eventConfig?.days > 0;
     }
+    if (event?.type == NotificationEventType.vulnFound) {
+      return (
+        eventConfig.level != undefined &&
+        eventConfig.level != '' &&
+        isValidTagRegex(eventConfig['tag-regex'])
+      );
+    }
     return true;
+  };
+
+  const selectEvent = (selectedEvent: NotificationEvent) => {
+    setEvent(selectedEvent);
+    setEventConfig({});
   };
 
   const validateTeamName = (name: string) => {
@@ -99,7 +114,7 @@ export default function CreateNotification(props: CreateNotificationProps) {
             <DropdownList>
               {events.map((event) => (
                 <Conditional key={event.type} if={event.enabled}>
-                  <DropdownItem onClick={() => setEvent(event)}>
+                  <DropdownItem onClick={() => selectEvent(event)}>
                     {event.icon} {event.title}
                   </DropdownItem>
                 </Conditional>
@@ -109,6 +124,12 @@ export default function CreateNotification(props: CreateNotificationProps) {
         </FormGroup>
         <Conditional if={event?.type == NotificationEventType.imageExpiry}>
           <RepoEventExpiry
+            eventConfig={eventConfig}
+            setEventConfig={setEventConfig}
+          />
+        </Conditional>
+        <Conditional if={event?.type == NotificationEventType.vulnFound}>
+          <VulnerabilityEventConfig
             eventConfig={eventConfig}
             setEventConfig={setEventConfig}
           />
