@@ -39,11 +39,26 @@ def _get_version_number():
     if version:
         return version
 
+    # Product images (Containerfile.art) record the ART release version here.
+    # That value matches the image, including when CHANGELOG.md still names
+    # the previous z-stream.
+    version = _get_release_version_file()
+    if version:
+        return version
+
     base = _get_version_number_changelog()
     build_date = _get_build_date()
     if base and build_date:
         return f"{base}-nightly-{build_date}"
     return base
+
+
+def _get_release_version_file():
+    try:
+        with open(os.path.join(ROOT_DIR, "QUAY_VERSION")) as f:
+            return f.read().strip()
+    except (IOError, OSError):
+        return ""
 
 
 def _get_version_number_changelog():

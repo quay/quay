@@ -24,9 +24,10 @@ const brandingE2E = process.env.PLAYWRIGHT_BRANDING_E2E === '1';
  * Version reported by /config.version_number = "Quay <version>" (endpoints/web.py),
  * resolved by _init._get_version_number(). Both downstream shapes are valid:
  *
- *   - Release form: "Quay v3.18.1". The operator sets QUAY_VERSION on the Quay
- *     pod from the installed release, and that value replaces the built one
- *     entirely; release images also carry no BUILD_DATE.
+ *   - Release form: "Quay v3.18.2". Standalone images baked by Containerfile.art
+ *     read QUAY_VERSION written from the x/y/z build args. The operator can
+ *     still replace that by setting QUAY_VERSION on the pod. Release images
+ *     also carry no BUILD_DATE.
  *   - Nightly form: "Quay v3.18.0-nightly-202608031425" — top CHANGELOG heading
  *     ("## [vX.Y.Z]") plus the BUILD_DATE the Dockerfile writes
  *     ("date -u +%Y%m%d%H%M").
