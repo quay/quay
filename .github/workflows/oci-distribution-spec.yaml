@@ -62,7 +62,7 @@ jobs:
         CGO_ENABLED=0 go test -c -o conformance.test
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
+      uses: docker/setup-buildx-action@v4
 
     - name: Build and export to Docker
       uses: docker/build-push-action@v3
