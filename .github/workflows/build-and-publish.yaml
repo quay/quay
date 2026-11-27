@@ -111,7 +111,7 @@ jobs:
 
       - name: Build and push
         id: docker_build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         env:
           TAG: ${{ steps.version-from-branch.outputs.version }}${{ env.TAG_SUFFIX }}
         with:
@@ -170,7 +170,7 @@ jobs:
 
       - name: Build and push
         id: docker_build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         env:
           TAG: ${{ steps.version-from-branch.outputs.version }}${{ env.TAG_SUFFIX }}
         with:
