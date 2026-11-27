@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import json
 import logging
+import random
+import time
 from typing import Callable
 
-from peewee import Select, fn
+from peewee import fn
 
 import features
 from app import app, proxy_cache_blob_queue, storage
-from data import database
 from data.database import (
     ImageStorage,
     ImageStoragePlacement,
@@ -17,7 +18,6 @@ from data.database import Manifest as ManifestTable
 from data.database import ManifestBlob, ManifestChild
 from data.database import Tag as TagTable
 from data.database import (
-    db,
     db_disallow_replica_use,
     db_transaction,
     get_epoch_timestamp_ms,
@@ -31,7 +31,7 @@ from data.model import (
     namespacequota,
     oci,
 )
-from data.model.oci.manifest import is_child_manifest
+from data.model.oci.manifest import _ManifestAlreadyExists
 from data.model.proxy_cache import get_proxy_cache_config_for_org
 from data.model.quota import (
     QuotaOperation,
@@ -47,10 +47,6 @@ from data.model.storage import (
     with_blob_lock_or_fallback,
 )
 from data.registry_model.blobuploader import (
-    BlobDigestMismatchException,
-    BlobRangeMismatchException,
-    BlobTooLargeException,
-    BlobUploadException,
     BlobUploadSettings,
     complete_when_uploaded,
     create_blob_upload,
@@ -147,6 +143,16 @@ class ProxyModel(OCIModel):
         repo = create_repository(
             namespace_name, repo_name, self._user, visibility=visibility, proxy_cache=True
         )
+
+        if repo is None:
+            # Possible race condition: in parallel pulls of different tags from the same
+            # repository, each tag request might try and create the repo. The repo can only
+            # be created by one call, create_repo returns None otherwise. Only raise a fault if
+            # the repository actually doesn't exist
+            repo = get_repository(namespace_name, repo_name)
+            if repo is None:
+                return None
+
         return RepositoryReference.for_repo_obj(
             repo,
             namespace_name,
@@ -400,6 +406,36 @@ class ProxyModel(OCIModel):
 
         return tag
 
+    def _create_manifest_handling_race(self, create_manifest_fn, repo_ref, manifest, manifest_ref):
+        """
+        Handles insert manifst race conditions: if multiple, concurrent requests try to insert
+        the same manifest (for instance, multiple tags are being pulled from upstream,
+        all connected to the same manifest bytes), only one manifest insert will
+        succeed, the rest will most likely raise an exception. This exception must be caught and handled,
+        all tags must be stored properly in the database after a pull.
+        """
+        max_attempts = 5
+        for attempt in range(1, max_attempts + 1):
+            try:
+                return create_manifest_fn(repo_ref, manifest, manifest_ref)
+            except _ManifestAlreadyExists as e:
+                if attempt == max_attempts:
+                    logger.error(
+                        "Could not insert manifest %s after %d attempts",
+                        manifest.digest,
+                        attempt,
+                    )
+                    raise
+                delay = random.uniform(0.0, 0.5)
+                logger.debug(
+                    "Lost race on manifest insert (attempt %d/%d), retrying after %.2f seconds, exception: %s",
+                    attempt,
+                    max_attempts,
+                    delay,
+                    e,
+                )
+                time.sleep(delay)
+
     def _create_and_tag_manifest(
         self,
         repo_ref: RepositoryReference,
@@ -418,7 +454,9 @@ class ProxyModel(OCIModel):
         """
         self._proxy.manifest_exists(manifest_ref, ACCEPTED_MEDIA_TYPES)
         upstream_manifest = self._pull_upstream_manifest(repo_ref.name, manifest_ref)
-        manifest, tag = create_manifest_fn(repo_ref, upstream_manifest, manifest_ref)
+        manifest, tag = self._create_manifest_handling_race(
+            create_manifest_fn, repo_ref, upstream_manifest, manifest_ref
+        )
         return manifest, tag
 
     def _rollback_created_blobs_and_quota(self, repo_ref, manifest, created_blobs):
@@ -518,7 +556,9 @@ class ProxyModel(OCIModel):
 
         # if we got here, the manifest is stale, so we both create a new manifest
         # entry in the db, and retarget the tag.
-        _, tag = create_manifest_fn(repo_ref, upstream_manifest, manifest_ref)
+        _, tag = self._create_manifest_handling_race(
+            create_manifest_fn, repo_ref, upstream_manifest, manifest_ref
+        )
         return tag, True
 
     def _create_manifest_and_retarget_tag(
@@ -648,9 +688,18 @@ class ProxyModel(OCIModel):
         Raises QuotaExceededException if there are not enough tags to prune.
         """
         self._check_image_upload_possible_or_prune(repository_ref, manifest)
-        with db_disallow_replica_use():
-            with db_transaction():
-                db_manifest = oci.manifest.create_manifest(repository_ref.id, manifest)
+
+        # when multiple requests come in for the same manifest, all threads will try to do it
+        # at the same time but only one will succeed. to stop it, we first check if the manifest
+        # is available and only if it's not, we try to insert it.
+        db_manifest = oci.manifest.lookup_manifest(
+            repository_ref.id, manifest.digest, allow_dead=True
+        )
+
+        if db_manifest is None:
+            with db_disallow_replica_use():
+                with db_transaction():
+                    db_manifest = oci.manifest.create_manifest(repository_ref.id, manifest)
 
         created_blobs = []  # Track ManifestBlob rows created in this attempt
         try:
@@ -673,18 +722,31 @@ class ProxyModel(OCIModel):
                         return wrapped_manifest, tag
 
                     manifests_to_connect = []
+                    children = []
                     for child in manifest.child_manifests(content_retriever=None):
                         m = oci.manifest.lookup_manifest(
                             repository_ref.id, child.digest, allow_hidden=True, allow_dead=True
                         )
                         if m is None:
                             m = oci.manifest.create_manifest(repository_ref.id, child)
-                        manifests_to_connect.append(m)
+                        children.append(m)
+
+                        # the manifest list might already have been created and its children linked
+                        # by a concurrent request, so only insert the links that are missing:
+                        if (
+                            not ManifestChild.select()
+                            .where(
+                                ManifestChild.manifest == db_manifest.id,
+                                ManifestChild.child_manifest == m.id,
+                            )
+                            .exists()
+                        ):
+                            manifests_to_connect.append(m)
 
                     oci.manifest.connect_manifests(
                         manifests_to_connect, db_manifest, repository_ref.id
                     )
-                    for child_manifest in manifests_to_connect:
+                    for child_manifest in children:
                         oci.tag.create_temporary_tag_if_necessary(child_manifest, expiration)
 
                     return wrapped_manifest, tag
